@@ -2,355 +2,548 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <link rel="icon" type="image/x-icon" href="favicon.ico"/>
-  <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
-  <link rel="apple-touch-icon" href="favicon-192.png"/>
-    <title>tonú — Panier</title>
+  <link rel="icon" type="image/jpeg" href="TonuIcon.jpeg"/>
+  <link rel="apple-touch-icon" href="TonuIcon.jpeg"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>tonú — Panier</title>
 <link rel="stylesheet" href="shared.css"/>
 <style>
-body{background:var(--bg)}
-.cart-page{min-height:100vh;padding:110px 56px 80px;max-width:1400px;margin:0 auto;position:relative;z-index:2}
-.cart-header{margin-bottom:48px}
-.cart-title{font-family:'Cormorant',serif;font-weight:300;font-size:clamp(40px,5vw,72px);line-height:.9;color:var(--beige)}
-.cart-title em{font-style:italic;color:var(--gold)}
-.cart-count-txt{font-family:'Syne',sans-serif;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--grey);margin-top:8px}
+/* ══════════════════════════════════════════
+   CART PAGE — END Clothing style
+   ══════════════════════════════════════════ */
+.cart-page{
+  min-height:calc(100vh - var(--total-nav));
+  display:grid;
+  grid-template-columns:1fr 380px;
+  align-items:start;
+  background:var(--black2);
+}
 
-.cart-layout{display:grid;grid-template-columns:1fr 380px;gap:48px;align-items:start}
+/* ── LEFT COLUMN ── */
+.cart-main{
+  border-right:1px solid var(--black3);
+  min-height:calc(100vh - var(--total-nav));
+}
+.cart-header{
+  display:flex;align-items:baseline;gap:10px;
+  padding:28px 28px 20px;
+  border-bottom:1px solid var(--black3);
+  background:var(--black);
+}
+.cart-title{
+  font-family:var(--f-display);font-size:32px;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--white);
+}
+.cart-title-count{
+  font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;
+  color:var(--grey3);
+}
 
-/* ITEMS */
-.cart-items{display:flex;flex-direction:column;gap:2px;background:rgba(184,137,42,.06)}
-.cart-item{
-  background:rgba(12,7,2,.78);backdrop-filter:blur(10px);
-  border:1px solid rgba(184,137,42,.08);
-  display:grid;grid-template-columns:100px 1fr auto;
-  gap:24px;align-items:center;padding:24px;
-  transition:background .3s;
-}
-.cart-item:hover{background:rgba(20,10,3,.85)}
-.ci-img{
-  aspect-ratio:3/4;
-  border-radius:12px 12px 4px 4px;
-  display:flex;align-items:center;justify-content:center;
-  position:relative;overflow:hidden;
-}
-.ci-img::before{content:'';position:absolute;inset:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cpath d='M4 4 L8 10 L12 4' fill='none' stroke='%23D4A84B' stroke-width='.8' opacity='.2'/%3E%3Crect x='16' y='3' width='8' height='7' fill='none' stroke='%23D4A84B' stroke-width='.8' opacity='.18'/%3E%3Cpath d='M4 24 L10 32 L16 24 L22 32 L28 24' fill='none' stroke='%23D4A84B' stroke-width='.7' opacity='.16'/%3E%3Cpath d='M4 50 Q4 44 10 44 Q16 44 16 50 Q16 56 10 56' fill='none' stroke='%23D4A84B' stroke-width='.8' opacity='.18'/%3E%3Cpath d='M4 68 L10 76 L16 68 Z' fill='none' stroke='%23D4A84B' stroke-width='.8' opacity='.18'/%3E%3C/svg%3E");background-size:80px 80px;}
-.ci-cloth{
-  width:52%;height:66%;
-  border-radius:16px 16px 6px 6px;
-  box-shadow:0 8px 20px rgba(0,0,0,.55);
-  position:relative;z-index:1;
-}
-.ci-details{display:flex;flex-direction:column;gap:8px}
-.ci-cat{font-size:8px;letter-spacing:2.5px;text-transform:uppercase;color:var(--gold)}
-.ci-name{font-family:'Cormorant',serif;font-size:22px;color:var(--beige);font-weight:400;line-height:1.2}
-.ci-meta{display:flex;gap:16px;flex-wrap:wrap}
-.ci-tag{
-  font-size:9px;letter-spacing:1.5px;text-transform:uppercase;
-  color:rgba(234,217,181,.38);
-  border:1px solid rgba(184,137,42,.15);padding:4px 10px;
-}
-.ci-price{font-family:'Cormorant',serif;font-weight:600;font-size:20px;color:var(--gold);margin-top:4px}
-.ci-actions{display:flex;flex-direction:column;align-items:flex-end;gap:14px}
-.ci-qty{display:flex;align-items:center;border:1px solid rgba(184,137,42,.18)}
-.ci-qty button{width:32px;height:32px;background:none;border:none;color:var(--beige);font-size:14px;cursor:none;transition:background .2s}
-.ci-qty button:hover{background:rgba(184,137,42,.1)}
-.ci-qty span{width:32px;text-align:center;font-family:'Syne',sans-serif;font-size:12px;color:var(--beige)}
-.ci-remove{
-  font-size:9px;letter-spacing:2px;text-transform:uppercase;
-  color:rgba(234,217,181,.22);background:none;border:none;
-  cursor:none;transition:color .3s;
-}
-.ci-remove:hover{color:rgba(220,80,80,.8)}
-.ci-subtotal{font-family:'Cormorant',serif;font-size:17px;color:rgba(234,217,181,.45)}
-
-/* EMPTY STATE */
+/* Empty state */
 .cart-empty{
-  text-align:center;padding:80px 40px;
-  background:rgba(12,7,2,.7);border:1px solid rgba(184,137,42,.08);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:80px 40px;text-align:center;gap:16px;
 }
-.cart-empty-icon{font-size:48px;margin-bottom:20px;opacity:.4}
-.cart-empty-txt{font-family:'Cormorant',serif;font-size:28px;color:rgba(234,217,181,.4);font-style:italic;margin-bottom:8px}
-.cart-empty-sub{font-size:12px;color:rgba(234,217,181,.24);margin-bottom:28px}
+.cart-empty-icon{font-size:40px;opacity:.3}
+.cart-empty-txt{
+  font-family:var(--f-display);font-size:28px;letter-spacing:.06em;
+  text-transform:uppercase;color:rgba(0,0,0,.35);
+}
+.cart-empty-sub{
+  font-family:var(--f-mono);font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--grey2);margin-bottom:16px;
+}
 
-/* ORDER SUMMARY */
-.cart-summary{
-  background:rgba(12,7,2,.82);backdrop-filter:blur(14px);
-  border:1px solid rgba(184,137,42,.12);padding:32px;
-  position:sticky;top:100px;
+/* Cart items */
+.cart-items{display:flex;flex-direction:column}
+.cart-item{
+  display:grid;
+  grid-template-columns:96px 1fr auto;
+  gap:0;align-items:stretch;
+  border-bottom:1px solid var(--black3);
+  transition:background .2s;
 }
-.summary-title{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold-ll);margin-bottom:24px}
-.summary-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
-.summary-label{font-size:12px;color:rgba(234,217,181,.42)}
-.summary-val{font-family:'Cormorant',serif;font-size:16px;color:rgba(234,217,181,.7)}
-.summary-div{height:1px;background:rgba(184,137,42,.12);margin:20px 0}
-.summary-total-label{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--beige)}
-.summary-total-val{font-family:'Cormorant',serif;font-weight:600;font-size:28px;color:var(--gold)}
+.cart-item:hover{background:rgba(255,255,255,.02)}
 
-/* PROMO CODE */
-.promo-wrap{display:flex;gap:0;margin:20px 0}
-.promo-in{
-  flex:1;background:transparent;border:1px solid rgba(184,137,42,.2);
-  border-right:none;padding:11px 14px;
-  font-family:'DM Sans',sans-serif;font-size:12px;color:var(--beige);
-  outline:none;
+/* Item image */
+.ci-img-wrap{
+  aspect-ratio:3/4;
+  position:relative;overflow:hidden;
+  background:var(--black);
+  border-right:1px solid var(--black3);
 }
-.promo-in::placeholder{color:rgba(234,217,181,.22)}
-.promo-in:focus{border-color:rgba(184,137,42,.45)}
-.promo-btn{
-  background:rgba(184,137,42,.15);border:1px solid rgba(184,137,42,.2);
-  color:var(--gold-ll);padding:0 16px;
-  font-family:'Syne',sans-serif;font-size:9px;font-weight:600;letter-spacing:2px;text-transform:uppercase;
-  cursor:none;transition:all .3s;
+.ci-img-wrap img{
+  width:100%;height:100%;object-fit:cover;display:block;
 }
-.promo-btn:hover{background:var(--gold);color:var(--black)}
+.ci-img-cloth{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+}
+.ci-cloth-shape{
+  width:46%;height:64%;
+  border-radius:18px 18px 6px 6px;
+  box-shadow:0 8px 24px rgba(0,0,0,.6);
+}
 
-/* SHIPPING OPTIONS */
-.shipping-opts{margin:16px 0 20px;display:flex;flex-direction:column;gap:8px}
+/* Item details */
+.ci-details{
+  padding:20px 20px;
+  display:flex;flex-direction:column;justify-content:space-between;
+  gap:12px;border-right:1px solid var(--black3);
+}
+.ci-brand{
+  font-family:var(--f-mono);font-size:9.5px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--gold);margin-bottom:4px;
+}
+.ci-name{
+  font-family:var(--f-display);font-size:22px;
+  letter-spacing:.04em;text-transform:uppercase;
+  color:var(--white);line-height:1;margin-bottom:8px;
+}
+.ci-meta{display:flex;gap:8px;flex-wrap:wrap}
+.ci-tag{
+  font-family:var(--f-mono);font-size:9px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--grey3);
+  border:1px solid var(--black3);padding:4px 10px;
+}
+.ci-price{
+  font-family:var(--f-display);font-size:22px;
+  letter-spacing:.04em;color:var(--gold);
+}
+.ci-remove{
+  font-family:var(--f-mono);font-size:9px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--grey2);
+  background:none;border:none;cursor:none;
+  transition:color .2s;align-self:flex-start;padding:0;
+}
+.ci-remove:hover{color:var(--red)}
+
+/* Item qty column */
+.ci-qty-col{
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:8px;
+  padding:20px 16px;width:80px;
+}
+.ci-qty{
+  display:flex;flex-direction:column;
+  border:1px solid var(--black3);
+}
+.ci-qty button{
+  width:32px;height:32px;background:transparent;border:none;
+  color:var(--white);font-size:14px;cursor:none;
+  transition:background .2s;display:flex;align-items:center;justify-content:center;
+  border-bottom:1px solid var(--black3);
+}
+.ci-qty button:last-child{border-bottom:none}
+.ci-qty button:hover{background:var(--black3)}
+.ci-qty span{
+  width:32px;height:32px;
+  text-align:center;line-height:32px;
+  font-family:var(--f-mono);font-size:12px;color:var(--white);
+  border-bottom:1px solid var(--black3);
+}
+.ci-subtotal{
+  font-family:var(--f-mono);font-size:9px;letter-spacing:.1em;
+  color:var(--grey3);text-align:center;
+}
+
+/* Cart footer bar */
+.cart-footer-bar{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:16px 28px;border-top:1px solid var(--black3);
+  background:var(--black);flex-wrap:wrap;gap:12px;
+}
+.cart-footer-link{
+  font-family:var(--f-mono);font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--gold);text-decoration:none;
+  cursor:none;transition:color .2s;
+}
+.cart-footer-link:hover{color:var(--gold2)}
+.cart-clear{
+  font-family:var(--f-mono);font-size:9.5px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--grey2);background:none;
+  border:none;cursor:none;transition:color .2s;
+}
+.cart-clear:hover{color:var(--red)}
+
+/* ── RIGHT COLUMN ── */
+.cart-sidebar{
+  position:sticky;top:var(--total-nav);
+  background:var(--black);
+  border-left:none;/* already handled by grid gap=0 */
+}
+.cs-section{
+  padding:24px;border-bottom:1px solid var(--black3);
+}
+.cs-title{
+  font-family:var(--f-mono);font-size:9.5px;font-weight:500;
+  letter-spacing:.2em;text-transform:uppercase;
+  color:var(--grey3);margin-bottom:18px;
+}
+
+/* Promo */
+.promo-wrap{display:flex;gap:0}
+.promo-input{
+  flex:1;background:#FAFAF8;
+  border:1px solid var(--black4);border-right:none;
+  padding:0 14px;height:44px;
+  font-family:var(--f-mono);font-size:11px;color:var(--white);
+  outline:none;transition:border-color .2s;
+}
+.promo-input::placeholder{color:var(--grey2)}
+.promo-input:focus{border-color:var(--grey2)}
+.promo-apply{
+  height:44px;padding:0 16px;
+  background:var(--black3);border:1px solid var(--black3);
+  font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--white);cursor:none;transition:all .2s;
+}
+.promo-apply:hover{background:var(--gold);color:var(--black);border-color:var(--gold)}
+
+/* Shipping */
+.ship-opts{display:flex;flex-direction:column;gap:2px}
 .ship-opt{
   display:flex;align-items:center;justify-content:space-between;
-  padding:12px 14px;border:1px solid rgba(184,137,42,.1);
-  cursor:none;transition:border-color .3s;
+  padding:12px 14px;border:1px solid var(--black3);
+  cursor:none;transition:all .2s;background:var(--black2);
 }
-.ship-opt.sel{border-color:rgba(184,137,42,.45);background:rgba(184,137,42,.05)}
+.ship-opt:hover{border-color:var(--grey2)}
+.ship-opt.sel{border-color:var(--gold);background:rgba(200,169,110,.04)}
 .ship-opt-l{display:flex;align-items:center;gap:10px}
-.ship-radio{width:14px;height:14px;border:1.5px solid rgba(184,137,42,.3);border-radius:50%;position:relative;flex-shrink:0}
-.ship-opt.sel .ship-radio::after{content:'';position:absolute;inset:3px;background:var(--gold);border-radius:50%}
-.ship-name{font-size:11px;color:var(--beige);font-weight:500}
-.ship-days{font-size:9.5px;color:rgba(234,217,181,.35)}
-.ship-price{font-family:'Cormorant',serif;font-size:14px;color:var(--gold)}
+.ship-radio{
+  width:14px;height:14px;border:1.5px solid var(--black4);
+  border-radius:50%;position:relative;flex-shrink:0;
+  transition:border-color .2s;
+}
+.ship-opt.sel .ship-radio{border-color:var(--gold)}
+.ship-opt.sel .ship-radio::after{
+  content:'';position:absolute;inset:3px;
+  background:var(--gold);border-radius:50%;
+}
+.ship-name{
+  font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;color:var(--white);
+}
+.ship-days{
+  font-family:var(--f-mono);font-size:9px;color:var(--grey3);margin-top:2px;
+}
+.ship-price{
+  font-family:var(--f-mono);font-size:11px;color:var(--gold);
+}
 
-/* REASSURANCE */
-.reassurance{display:flex;flex-direction:column;gap:8px;margin-top:16px}
-.reas-item{display:flex;align-items:center;gap:10px;font-size:10px;color:rgba(234,217,181,.3)}
-.reas-icon{font-size:12px}
+/* Totals */
+.total-row{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:10px;
+}
+.total-label{
+  font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;
+  color:var(--grey3);
+}
+.total-val{
+  font-family:var(--f-mono);font-size:12px;color:rgba(0,0,0,.6);
+}
+.total-disc-val{
+  font-family:var(--f-mono);font-size:12px;color:#4CAF50;
+}
+.grand-total-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding-top:14px;margin-top:4px;
+  border-top:1px solid var(--black3);
+}
+.grand-label{
+  font-family:var(--f-mono);font-size:10px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--white);
+}
+.grand-val{
+  font-family:var(--f-display);font-size:32px;
+  letter-spacing:.04em;color:var(--gold);
+}
 
-/* ── MOBILE ── */
+/* Reassurance */
+.reassurance{display:flex;flex-direction:column;gap:8px}
+.reas-item{
+  display:flex;align-items:center;gap:10px;
+  font-family:var(--f-mono);font-size:9.5px;letter-spacing:.08em;
+  color:var(--grey2);
+}
+.reas-icon{font-size:12px;flex-shrink:0;color:var(--gold)}
+
+/* Payment icons */
+.pay-icons{
+  display:flex;gap:6px;flex-wrap:wrap;justify-content:center;
+  padding:16px 24px;border-top:1px solid var(--black3);
+}
+.pay-icon{
+  border:1px solid var(--black3);padding:5px 10px;
+  font-family:var(--f-mono);font-size:9px;letter-spacing:.06em;
+  color:var(--grey2);
+}
+
+/* ── RESPONSIVE ── */
+@media(max-width:960px){
+  .cart-page{grid-template-columns:1fr}
+  .cart-main{border-right:none}
+  .cart-sidebar{position:static;border-top:1px solid var(--black3)}
+}
 @media(max-width:768px){
-  .cart-page{padding:90px 16px 60px}
-  .cart-layout{grid-template-columns:1fr}
-  .cart-summary{position:relative;top:auto}
-  .cart-item{grid-template-columns:80px 1fr;gap:14px;padding:16px}
-  .ci-actions{flex-direction:row;align-items:center;grid-column:1/-1}
+  .cart-header{padding:20px 16px 16px}
+  .cart-item{grid-template-columns:72px 1fr 56px}
+  .ci-details{padding:14px 12px}
+  .ci-name{font-size:17px}
+  .ci-qty-col{padding:12px 8px;width:56px}
+  .ci-qty button{width:26px;height:26px}
+  .ci-qty span{width:26px;height:26px;line-height:26px;font-size:11px}
+  .cs-section{padding:18px 16px}
+  .pay-icons{padding:12px 16px}
+  .cart-footer-bar{padding:14px 16px}
 }
 </style>
 </head>
 <body>
-<div id="cd"></div><div id="cr"></div><div id="spg"></div>
+<div id="nav-root"></div>
 
-<!-- Background subtle gradient -->
-<div style="position:fixed;inset:0;background:radial-gradient(ellipse 70% 60% at 30% 40%,rgba(26,53,40,.18) 0%,transparent 70%),radial-gradient(ellipse 50% 50% at 70% 60%,rgba(184,137,42,.06) 0%,transparent 60%);pointer-events:none;z-index:1"></div>
-
-<a href="cart.html" class="fcrt cart-badge-wrap">🛒<span class="cart-count" style="display:none">0</span></a>
-
-<nav id="nav">
-  <a href="index.html" class="nlogo">
-    <svg class="nlogo-svg" viewBox="0 0 100 100" fill="none">
-      <path d="M50 4C72 4,90 16,92 32C94 46,84 54,68 56C82 58,94 66,94 80C94 92,78 98,58 98C36 98,14 88,10 72C7 60,14 52,28 50C14 46,6 38,8 24C10 10,28 4,50 4Z" fill="#0A0704"/>
-      <path d="M14 54C20 44,34 40,48 46C60 51,68 50,74 44" stroke="rgba(234,217,181,.95)" stroke-width="6" fill="none" stroke-linecap="round"/>
-      <ellipse cx="56" cy="32" rx="8" ry="11" fill="rgba(234,217,181,.93)" transform="rotate(-10 56 32)"/>
-      <ellipse cx="60" cy="74" rx="14" ry="13" fill="rgba(234,217,181,.92)"/>
-    </svg>
-    <span class="nlogo-nm">tonú</span>
-  </a>
-  <ul class="nlinks">
-    <li><a href="index.html#products">Collection</a></li>
-    <li><a href="index.html#pillars">ADN</a></li>
-  </ul>
-  <div class="nav-actions">
-    <a href="cart.html" class="nbtn cart-badge-wrap" style="border-color:rgba(184,137,42,.55)">
-      <span class="cart-btn-txt">Panier — 0</span>
-      <span class="cart-count" style="display:none">0</span>
-    </a>
-    <button class="ham" id="ham"><span></span><span></span><span></span></button>
-  </div>
-</nav>
-<div class="mob-menu" id="mobMenu">
+<!-- BREADCRUMB -->
+<div class="breadcrumb">
   <a href="index.html">Accueil</a>
-  <a href="index.html#products">Collection</a>
-  <a href="checkout.html">Commander</a>
+  <span class="sep">›</span>
+  <span class="current">Panier</span>
 </div>
 
-<main class="cart-page">
-  <div class="cart-header reveal">
-    <h1 class="cart-title">Mon <em>panier</em></h1>
-    <div class="cart-count-txt" id="cartCountTxt">0 article</div>
+<div class="cart-page">
+  <!-- LEFT -->
+  <div class="cart-main">
+    <div class="cart-header">
+      <span class="cart-title">Mon Panier</span>
+      <span class="cart-title-count" id="cart-title-count">— 0 article</span>
+    </div>
+    <div id="cart-items-root"></div>
+    <div class="cart-footer-bar" id="cart-footer-bar" style="display:none">
+      <a href="product.html" class="cart-footer-link">← Continuer les achats</a>
+      <button class="cart-clear" onclick="clearCart()">Vider le panier</button>
+    </div>
   </div>
 
-  <div class="cart-layout">
-    <!-- ITEMS -->
-    <div>
-      <div id="cartItems"></div>
-      <!-- Continue shopping -->
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:24px;flex-wrap:wrap;gap:12px">
-        <a href="index.html#products" style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);text-decoration:none;display:flex;align-items:center;gap:8px">← Continuer les achats</a>
-        <button onclick="clearAll()" style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(234,217,181,.22);background:none;border:none;cursor:none">Vider le panier</button>
+  <!-- RIGHT -->
+  <div class="cart-sidebar">
+    <!-- Promo -->
+    <div class="cs-section">
+      <div class="cs-title">Code promo</div>
+      <div class="promo-wrap">
+        <input class="promo-input" id="promo-in" type="text" placeholder="Entrer le code"/>
+        <button class="promo-apply" onclick="applyPromo()">Appliquer</button>
       </div>
     </div>
 
-    <!-- SUMMARY -->
-    <div class="cart-summary reveal rd1">
-      <div class="summary-title">Récapitulatif</div>
-
-      <!-- Promo -->
-      <div class="promo-wrap">
-        <input class="promo-in" id="promoIn" placeholder="Code promo"/>
-        <button class="promo-btn" onclick="applyPromo()">Appliquer</button>
-      </div>
-
-      <!-- Shipping -->
-      <div style="font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:rgba(234,217,181,.35);margin-bottom:10px">Mode de livraison</div>
-      <div class="shipping-opts">
-        <div class="ship-opt sel" onclick="selectShip(this,0,'Livraison Standard','3–5 jours','Offerte')">
-          <div class="ship-opt-l"><div class="ship-radio"></div><div><div class="ship-name">Standard</div><div class="ship-days">3–5 jours ouvrés</div></div></div>
+    <!-- Shipping -->
+    <div class="cs-section">
+      <div class="cs-title">Mode de livraison</div>
+      <div class="ship-opts">
+        <div class="ship-opt sel" onclick="selectShip(this,0)">
+          <div class="ship-opt-l">
+            <div class="ship-radio"></div>
+            <div>
+              <div class="ship-name">Standard</div>
+              <div class="ship-days">3–5 jours ouvrés</div>
+            </div>
+          </div>
           <div class="ship-price">Offerte</div>
         </div>
-<div class="ship-opt" onclick="selectShip(this,5248,'Livraison Express','24h','5 248 FCFA')">
-<div class="ship-opt-l"><div class="ship-radio"></div><div><div class="ship-name">Express</div><div class="ship-days">24h ouvrées</div></div></div>
-<div class="ship-price">5 248 FCFA</div>
-</div>
-<div class="ship-opt" onclick="selectShip(this,13120,'Livraison International','5–10 jours','13 120 FCFA')">
-<div class="ship-opt-l"><div class="ship-radio"></div><div><div class="ship-name">International</div><div class="ship-days">5–10 jours</div></div></div>
-<div class="ship-price">13 120 FCFA</div>
-</div>
-      </div>
-
-      <div class="summary-div"></div>
-<div class="summary-row"><span class="summary-label">Sous-total</span><span class="summary-val" id="subtotalVal">0 FCFA</span></div>
-<div class="summary-row" id="discRow" style="display:none"><span class="summary-label" style="color:rgba(80,200,100,.6)">Réduction</span><span class="summary-val" style="color:rgba(80,200,100,.7)" id="discVal">-0 FCFA</span></div>
-<div class="summary-row"><span class="summary-label">Livraison</span><span class="summary-val" id="shipVal">Offerte</span></div>
-<div class="summary-div"></div>
-<div class="summary-row">
-<span class="summary-total-label">Total TTC</span>
-<span class="summary-total-val" id="totalVal">0 FCFA</span>
-</div>
-
-      <a href="checkout.html" class="btn-p" style="width:100%;justify-content:center;margin-top:24px;display:flex;text-decoration:none" id="checkoutBtn">
-        <span>Commander →</span>
-      </a>
-
-      <div class="reassurance">
-        <div class="reas-item"><span class="reas-icon">🔒</span>Paiement 100% sécurisé</div>
-        <div class="reas-item"><span class="reas-icon">↩</span>Retours gratuits 30 jours</div>
-        <div class="reas-item"><span class="reas-icon">✦</span>Authenticité garantie</div>
-      </div>
-
-      <!-- Payment icons -->
-      <div style="display:flex;gap:8px;justify-content:center;margin-top:16px;flex-wrap:wrap">
-        <div style="border:1px solid rgba(184,137,42,.1);padding:4px 10px;font-size:10px;color:rgba(234,217,181,.25)">VISA</div>
-        <div style="border:1px solid rgba(184,137,42,.1);padding:4px 10px;font-size:10px;color:rgba(234,217,181,.25)">Mastercard</div>
-        <div style="border:1px solid rgba(184,137,42,.1);padding:4px 10px;font-size:10px;color:rgba(234,217,181,.25)">PayPal</div>
-        <div style="border:1px solid rgba(184,137,42,.1);padding:4px 10px;font-size:10px;color:rgba(234,217,181,.25)">Apple Pay</div>
+        <div class="ship-opt" onclick="selectShip(this,5248)">
+          <div class="ship-opt-l">
+            <div class="ship-radio"></div>
+            <div>
+              <div class="ship-name">Express</div>
+              <div class="ship-days">24h ouvrées</div>
+            </div>
+          </div>
+          <div class="ship-price">5 248 FCFA</div>
+        </div>
+        <div class="ship-opt" onclick="selectShip(this,13120)">
+          <div class="ship-opt-l">
+            <div class="ship-radio"></div>
+            <div>
+              <div class="ship-name">International</div>
+              <div class="ship-days">5–10 jours</div>
+            </div>
+          </div>
+          <div class="ship-price">13 120 FCFA</div>
+        </div>
       </div>
     </div>
+
+    <!-- Totals -->
+    <div class="cs-section">
+      <div class="cs-title">Récapitulatif</div>
+      <div class="total-row"><span class="total-label">Sous-total</span><span class="total-val" id="sub-total">0 FCFA</span></div>
+      <div class="total-row" id="disc-row" style="display:none"><span class="total-label">Réduction</span><span class="total-disc-val" id="disc-val">−0 FCFA</span></div>
+      <div class="total-row"><span class="total-label">Livraison</span><span class="total-val" id="ship-val">Offerte</span></div>
+      <div class="grand-total-row">
+        <span class="grand-label">Total TTC</span>
+        <span class="grand-val" id="grand-total">0 FCFA</span>
+      </div>
+      <a href="checkout.html" class="btn btn-primary btn-full btn-lg" style="margin-top:20px;text-decoration:none" id="checkout-btn">
+        <span>Commander →</span>
+      </a>
+    </div>
+
+    <!-- Reassurance -->
+    <div class="cs-section">
+      <div class="reassurance">
+        <div class="reas-item"><span class="reas-icon">🔒</span>Paiement 100% sécurisé via FedaPay</div>
+        <div class="reas-item"><span class="reas-icon">↩</span>Retours gratuits sous 30 jours</div>
+        <div class="reas-item"><span class="reas-icon">✦</span>Authenticité garantie</div>
+        <div class="reas-item"><span class="reas-icon">📦</span>Livraison offerte dès 50 000 FCFA</div>
+      </div>
+    </div>
+
+    <!-- Payment icons -->
+    <div class="pay-icons">
+      <!-- MTN MoMo badge -->
+      <div class="pay-icon" style="background:#FFCC00;color:#000;border-color:#FFCC00;font-weight:700">MTN MoMo</div>
+      <div class="pay-icon" style="background:#0066B3;color:#fff;border-color:#0066B3">Moov</div>
+      <div class="pay-icon" style="background:#1A1F71;color:#fff;border-color:#1A1F71;font-style:italic">VISA</div>
+      <div class="pay-icon">Mastercard</div>
+    </div>
   </div>
-</main>
+</div>
+
+<div id="footer-root"></div>
 
 <script src="shared.js"></script>
 <script>
-const ham=document.getElementById('ham'),mobMenu=document.getElementById('mobMenu');
-ham.addEventListener('click',()=>{ham.classList.toggle('open');mobMenu.classList.toggle('open')});
+document.getElementById('nav-root').innerHTML = buildNavHTML({});
+document.getElementById('footer-root').innerHTML = buildFooterHTML();
+initShared();
 
-const clothColors=['#D4A84B','#EFE8D8','#3D6E56','#4D3018','#EDD98A'];
-const bgColors=['rgba(30,61,47,.88)','rgba(42,26,8,.88)','rgba(12,12,28,.88)','rgba(30,18,8,.88)','rgba(45,82,64,.88)'];
-
-let shipCost=0, discAmt=0;
+let shipCost = 0;
+let discAmt  = 0;
 
 function renderCart(){
-  const container=document.getElementById('cartItems');
-  const items=CART.items;
-  const count=CART.count();
-  document.getElementById('cartCountTxt').textContent=`${count} article${count>1?'s':''}`;
+  const root   = document.getElementById('cart-items-root');
+  const footer = document.getElementById('cart-footer-bar');
+  const btn    = document.getElementById('checkout-btn');
+  const items  = CART.items;
+  const count  = CART.count();
 
-  if(items.length===0){
-    container.innerHTML=`<div class="cart-empty"><div class="cart-empty-icon">🛒</div><div class="cart-empty-txt">Ton panier est vide</div><div class="cart-empty-sub">Explore notre collection et trouve ta pièce signature</div><a href="index.html#products" class="btn-p" style="display:inline-flex;text-decoration:none"><span>Explorer la collection</span></a></div>`;
-    document.getElementById('checkoutBtn').style.opacity='.4';
-    document.getElementById('checkoutBtn').style.pointerEvents='none';
+  document.getElementById('cart-title-count').textContent =
+    `— ${count} article${count !== 1 ? 's' : ''}`;
+
+  if(items.length === 0){
+    footer.style.display = 'none';
+    btn.style.opacity = '.4';
+    btn.style.pointerEvents = 'none';
+    root.innerHTML = `
+      <div class="cart-empty">
+        <div class="cart-empty-icon">🛒</div>
+        <div class="cart-empty-txt">Panier vide</div>
+        <div class="cart-empty-sub">Explore notre collection</div>
+        <a href="product.html" class="btn btn-primary"><span>Voir la collection →</span></a>
+      </div>`;
     updateTotals();
     return;
   }
-  document.getElementById('checkoutBtn').style.opacity='1';
-  document.getElementById('checkoutBtn').style.pointerEvents='all';
 
-  container.innerHTML='<div class="cart-items">'+items.map(item=>{
-    const pi=PRODUCTS.findIndex(p=>p.id===item.id);
-    const ci=Math.max(0,pi);
-    const prod=PRODUCTS.find(p=>p.id===item.id);
-    const imgSrc=item.image||prod?.image||'';
-    const imgHTML=imgSrc
-      ?`<img src="${imgSrc}" alt="${item.name}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">`
-      :'';
-    const clothHTML=`<div class="ci-cloth" style="background:${clothColors[ci]};${imgSrc?'display:none':''}"></div>`;
-    return `<div class="cart-item">
-      <div class="ci-img" style="background:${bgColors[ci]}">
-        ${imgHTML}${clothHTML}
-      </div>
-      <div class="ci-details">
-        <div class="ci-cat">${item.cat}</div>
-        <div class="ci-name">${item.name}</div>
-        <div class="ci-meta">
-          <div class="ci-tag">Taille: ${item.size}</div>
-          <div class="ci-tag">${item.cat}</div>
+  footer.style.display = 'flex';
+  btn.style.opacity = '1';
+  btn.style.pointerEvents = 'all';
+
+  root.innerHTML = `<div class="cart-items">${items.map(item => {
+    const idx   = Math.max(0, PRODUCTS.findIndex(p => p.id === item.id));
+    const prod  = PRODUCTS.find(p => p.id === item.id);
+    const img   = item.image || prod?.image || '';
+    const bg    = prod?.bgGrad || BG_GRADS[idx % BG_GRADS.length];
+    const cloth = prod?.clothColor || CLOTH_COLORS[idx % CLOTH_COLORS.length];
+
+    const imgHTML = img
+      ? `<img src="${img}" alt="${item.name}" loading="lazy"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+      : '';
+    const clothHTML = `
+      <div class="ci-img-cloth" style="background:${bg};display:${img?'none':'flex'}">
+        <div class="ci-cloth-shape" style="background:${cloth}"></div>
+      </div>`;
+
+    return `
+      <div class="cart-item">
+        <a href="product.html?id=${item.id}" class="ci-img-wrap" style="background:${bg}">
+          ${imgHTML}${clothHTML}
+        </a>
+        <div class="ci-details">
+          <div>
+            <div class="ci-brand">${item.brand || 'tonú'}</div>
+            <div class="ci-name">${item.name}</div>
+            <div class="ci-meta">
+              <span class="ci-tag">Taille ${item.size}</span>
+              <span class="ci-tag">${item.cat}</span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+            <div class="ci-price">${(item.price * item.qty).toLocaleString('fr-FR')} FCFA</div>
+            <button class="ci-remove" onclick="removeItem('${item.id}','${item.size}')">Supprimer</button>
+          </div>
         </div>
-        <div class="ci-price">${(item.price*item.qty).toLocaleString('fr-FR')} FCFA</div>
-      </div>
-      <div class="ci-actions">
-        <div class="ci-qty">
-          <button onclick="updateQty('${item.id}','${item.size}',-1)">−</button>
-          <span>${item.qty}</span>
-          <button onclick="updateQty('${item.id}','${item.size}',1)">+</button>
+        <div class="ci-qty-col">
+          <div class="ci-qty">
+            <button onclick="updateQty('${item.id}','${item.size}',${item.qty+1})">+</button>
+            <span>${item.qty}</span>
+            <button onclick="updateQty('${item.id}','${item.size}',${item.qty-1})">−</button>
+          </div>
+          <div class="ci-subtotal">${item.price.toLocaleString('fr-FR')}<br>FCFA/u</div>
         </div>
-        <span class="ci-subtotal">${item.price.toLocaleString('fr-FR')} FCFA / pièce</span>
-        <button class="ci-remove" onclick="removeItem('${item.id}','${item.size}')">Supprimer</button>
-      </div>
-    </div>`;
-  }).join('')+'</div>';
+      </div>`;
+  }).join('')}</div>`;
+
   updateTotals();
+
+  // re-attach cursor
+  setTimeout(()=>{
+    root.querySelectorAll('a,button').forEach(el=>{
+      el.addEventListener('mouseenter',()=>document.body.classList.add('cur-hover'));
+      el.addEventListener('mouseleave',()=>document.body.classList.remove('cur-hover'));
+    });
+  },50);
 }
 
 function updateTotals(){
-const sub=CART.total();
-const total=Math.max(0,sub-discAmt)+shipCost;
-document.getElementById('subtotalVal').textContent=`${sub.toLocaleString('fr-FR')} FCFA`;
-document.getElementById('totalVal').textContent=`${total.toLocaleString('fr-FR')} FCFA`;
-document.getElementById('shipVal').textContent=shipCost>0?`${shipCost.toLocaleString('fr-FR')} FCFA`:'Offerte';
-if(discAmt>0){
-document.getElementById('discRow').style.display='flex';
-document.getElementById('discVal').textContent=`- ${discAmt.toLocaleString('fr-FR')} FCFA`;
-} else {
-document.getElementById('discRow').style.display='none';
-}
+  const sub   = CART.total();
+  const total = Math.max(0, sub - discAmt) + shipCost;
+  document.getElementById('sub-total').textContent   = `${sub.toLocaleString('fr-FR')} FCFA`;
+  document.getElementById('grand-total').textContent = `${total.toLocaleString('fr-FR')} FCFA`;
+  document.getElementById('ship-val').textContent    = shipCost > 0 ? `${shipCost.toLocaleString('fr-FR')} FCFA` : 'Offerte';
+  const dr = document.getElementById('disc-row');
+  if(discAmt > 0){
+    dr.style.display = 'flex';
+    document.getElementById('disc-val').textContent = `−${discAmt.toLocaleString('fr-FR')} FCFA`;
+  } else { dr.style.display = 'none'; }
 }
 
-function updateQty(id,size,d){
-  const item=CART.items.find(i=>i.id===id&&i.size===size);
-  if(!item) return;
-  if(item.qty+d<=0){removeItem(id,size);return;}
-  CART.updateQty(id,size,item.qty+d);
+function updateQty(id, size, newQty){
+  if(newQty <= 0){ removeItem(id, size); return; }
+  CART.updateQty(id, size, newQty);
   renderCart();
 }
-function removeItem(id,size){
-  CART.remove(id,size);
+function removeItem(id, size){
+  CART.remove(id, size);
   renderCart();
-  showToast('Article retiré du panier');
+  showToast('Article retiré');
 }
-function clearAll(){
-  CART.items=[];CART.save();renderCart();
+function clearCart(){
+  CART.items = []; CART.save();
+  renderCart();
   showToast('Panier vidé');
 }
-
-function selectShip(el,cost,name,days,priceLabel){
+function selectShip(el, cost){
   document.querySelectorAll('.ship-opt').forEach(s=>s.classList.remove('sel'));
   el.classList.add('sel');
-  shipCost=cost;
+  shipCost = cost;
   updateTotals();
 }
-
 function applyPromo(){
-  const code=document.getElementById('promoIn').value.trim().toUpperCase();
-  if(code==='TONU10'){discAmt=Math.round(CART.total()*.1);showToast('Code TONU10 appliqué — 10% de réduction ✦');}
-  else if(code==='WELCOME'){discAmt=20;showToast('Code WELCOME appliqué — -€20 ✦');}
-  else{showToast('Code invalide','error');discAmt=0;}
+  const code = document.getElementById('promo-in').value.trim().toUpperCase();
+  const codes = { 'TONU10': ()=>{ discAmt=Math.round(CART.total()*.1); showToast('Code TONU10 — 10% de réduction ✦'); },
+                  'WELCOME': ()=>{ discAmt=5000; showToast('Code WELCOME — −5 000 FCFA ✦'); } };
+  if(codes[code]){ codes[code](); }
+  else { showToast('Code invalide','error'); discAmt=0; }
   updateTotals();
 }
 

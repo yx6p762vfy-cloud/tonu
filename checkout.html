@@ -2,531 +2,655 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <link rel="icon" type="image/x-icon" href="favicon.ico"/>
-  <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
-  <link rel="apple-touch-icon" href="favicon-192.png"/>
-    <title>tonú — Commander</title>
+  <link rel="icon" type="image/jpeg" href="TonuIcon.jpeg"/>
+  <link rel="apple-touch-icon" href="TonuIcon.jpeg"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>tonú — Commander</title>
 <link rel="stylesheet" href="shared.css"/>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script src="https://cdn.fedapay.com/checkout.js?v=1.1.7"></script>
 <style>
-body{background:var(--bg)}
-.checkout-page{min-height:100vh;padding:100px 40px 80px;max-width:1300px;margin:0 auto;position:relative;z-index:2}
+/* ══════════════════════════════════════════
+   CHECKOUT PAGE — 3-step, END Clothing style
+   ══════════════════════════════════════════ */
 
-/* STEPS INDICATOR */
-.steps{display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:56px}
-.step{display:flex;align-items:center;gap:12px;padding:0 20px}
+.checkout-wrap{
+  display:grid;
+  grid-template-columns:1fr 380px;
+  min-height:calc(100vh - var(--total-nav));
+  align-items:start;
+}
+
+/* ── STEP BAR ── */
+.step-bar{
+  display:flex;align-items:center;
+  padding:0 28px;height:52px;
+  background:var(--black);
+  border-bottom:1px solid var(--black3);
+  gap:0;
+}
+.step-item{
+  display:flex;align-items:center;gap:10px;
+  padding:0 20px 0 0;position:relative;
+}
+.step-item:not(:last-child)::after{
+  content:'›';
+  font-size:12px;color:var(--black4);
+  margin-right:20px;
+}
 .step-num{
-  width:32px;height:32px;border-radius:50%;
-  border:1.5px solid rgba(184,137,42,.25);
+  width:24px;height:24px;border-radius:50%;
+  border:1px solid var(--black4);
+  font-family:var(--f-mono);font-size:9px;font-weight:500;
+  color:var(--grey2);
   display:flex;align-items:center;justify-content:center;
-  font-family:'Syne',sans-serif;font-size:10px;font-weight:700;
-  color:rgba(234,217,181,.3);transition:all .4s;
+  transition:all .3s;flex-shrink:0;
 }
-.step.active .step-num{border-color:var(--gold);background:var(--gold);color:var(--black)}
-.step.done .step-num{border-color:rgba(184,137,42,.5);background:rgba(184,137,42,.15);color:var(--gold-ll)}
-.step-label{font-family:'Syne',sans-serif;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(234,217,181,.3);transition:color .4s}
-.step.active .step-label{color:var(--gold)}
-.step.done .step-label{color:rgba(234,217,181,.45)}
-.step-line{width:60px;height:1px;background:rgba(184,137,42,.15)}
-.step-line.done{background:rgba(184,137,42,.4)}
-
-/* LAYOUT */
-.checkout-layout{display:grid;grid-template-columns:1fr 360px;gap:48px;align-items:start}
-
-/* FORM PANEL */
-.form-panel{
-  background:rgba(10,6,2,.78);backdrop-filter:blur(14px);
-  border:1px solid rgba(184,137,42,.1);padding:40px;
+.step-lbl{
+  font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--grey2);transition:color .3s;
 }
-.fp-title{font-family:'Cormorant',serif;font-weight:300;font-size:28px;color:var(--beige);margin-bottom:28px;display:flex;align-items:center;gap:10px}
-.fp-icon{font-size:20px}
+.step-item.active .step-num{
+  background:var(--gold);border-color:var(--gold);color:var(--black);
+}
+.step-item.active .step-lbl{color:var(--white)}
+.step-item.done .step-num{
+  background:transparent;border-color:var(--gold3);color:var(--gold);
+}
+.step-item.done .step-lbl{color:var(--grey3)}
 
-/* FORM FIELDS */
-.field-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
-.field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
-.field.full{grid-column:1/-1}
-.field label{font-family:'Syne',sans-serif;font-size:8.5px;letter-spacing:2.5px;text-transform:uppercase;color:rgba(234,217,181,.38)}
+/* ── MAIN COLUMN ── */
+.checkout-main{
+  border-right:1px solid var(--black3);
+  min-height:calc(100vh - var(--total-nav) - 52px);
+}
+.form-section{
+  padding:32px 28px;border-bottom:1px solid var(--black3);
+}
+.form-section-title{
+  display:flex;align-items:center;gap:12px;
+  font-family:var(--f-display);font-size:22px;
+  letter-spacing:.05em;text-transform:uppercase;
+  color:var(--white);margin-bottom:24px;
+}
+.form-section-icon{font-size:16px}
+
+/* Form fields */
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.field label{
+  font-family:var(--f-mono);font-size:9px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--grey2);
+}
 .field input,.field select{
-  background:rgba(184,137,42,.04);
-  border:1px solid rgba(184,137,42,.15);
-  padding:12px 14px;color:var(--beige);
-  font-family:'DM Sans',sans-serif;font-size:13px;
-  outline:none;transition:border-color .3s;
+  background:#FAFAF8;
+  border:1px solid var(--black4);
+  height:44px;padding:0 14px;
+  font-family:var(--f-body);font-size:13px;color:var(--white);
+  outline:none;transition:border-color .25s;
   -webkit-appearance:none;
 }
-.field input::placeholder{color:rgba(234,217,181,.2)}
-.field input:focus,.field select:focus{border-color:rgba(184,137,42,.5)}
-.field select option{background:#1a0f04;color:var(--beige)}
-.field-note{font-size:10px;color:rgba(234,217,181,.22);margin-top:4px}
+.field input::placeholder{color:var(--grey2)}
+.field input:focus,.field select:focus{border-color:var(--grey2)}
+.field select{cursor:none}
+.field select option{background:var(--black2);color:var(--white)}
+.field-note{
+  font-family:var(--f-mono);font-size:9px;letter-spacing:.08em;
+  color:var(--grey2);margin-top:4px;
+}
 
-/* PAYMENT METHODS */
-.pay-methods{display:flex;flex-direction:column;gap:10px;margin-bottom:24px}
+/* Address review box */
+.addr-review{
+  background:var(--black3);border:1px solid var(--black4);
+  padding:16px;margin-bottom:20px;
+}
+.addr-review-label{
+  font-family:var(--f-mono);font-size:9px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--gold);margin-bottom:8px;
+}
+.addr-review-text{
+  font-size:12px;color:rgba(0,0,0,.55);line-height:1.8;
+}
+.addr-edit{
+  font-family:var(--f-mono);font-size:9px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--gold);
+  background:none;border:none;cursor:none;
+  text-decoration:underline;margin-top:8px;
+  display:block;
+}
+
+/* Payment methods */
+.pay-methods{display:flex;flex-direction:column;gap:4px;margin-bottom:24px}
 .pay-opt{
   display:flex;align-items:center;justify-content:space-between;
-  padding:14px 16px;border:1px solid rgba(184,137,42,.12);
-  cursor:none;transition:all .3s;
+  padding:14px 16px;border:1px solid var(--black3);
+  cursor:none;transition:all .25s;background:var(--black2);
 }
-.pay-opt.sel{border-color:rgba(184,137,42,.45);background:rgba(184,137,42,.06)}
+.pay-opt:hover{border-color:var(--grey2)}
+.pay-opt.sel{border-color:var(--gold);background:rgba(200,169,110,.04)}
 .pay-opt-l{display:flex;align-items:center;gap:12px}
-.pay-radio{width:16px;height:16px;border:1.5px solid rgba(184,137,42,.3);border-radius:50%;position:relative;flex-shrink:0;transition:border-color .3s}
+.pay-radio{
+  width:16px;height:16px;border:1.5px solid var(--black4);
+  border-radius:50%;position:relative;flex-shrink:0;
+  transition:border-color .2s;
+}
 .pay-opt.sel .pay-radio{border-color:var(--gold)}
-.pay-opt.sel .pay-radio::after{content:'';position:absolute;inset:4px;background:var(--gold);border-radius:50%}
-.pay-name{font-size:12px;color:var(--beige);font-weight:500}
-.pay-icons{display:flex;gap:6px}
-.pay-icon-badge{border:1px solid rgba(184,137,42,.12);padding:3px 8px;font-size:9px;color:rgba(234,217,181,.35)}
+.pay-opt.sel .pay-radio::after{
+  content:'';position:absolute;inset:4px;
+  background:var(--gold);border-radius:50%;
+}
+.pay-name{font-size:12px;color:var(--white);font-weight:500}
+.pay-icons-row{display:flex;gap:6px}
+.pay-badge{
+  border:1px solid var(--black3);padding:3px 8px;
+  font-family:var(--f-mono);font-size:8.5px;color:var(--grey3);
+}
+.pay-badge.mtn{background:#FFCC00;color:#000;border-color:#FFCC00;font-weight:700}
+.pay-badge.moov{background:#0066B3;color:#fff;border-color:#0066B3}
+.pay-badge.visa{background:#1A1F71;color:#fff;border-color:#1A1F71;font-style:italic}
 
-/* CARD FIELDS */
-.card-fields{
-  background:rgba(184,137,42,.04);border:1px solid rgba(184,137,42,.1);
-  padding:20px;margin-bottom:20px;display:none;
+/* Security notice */
+.security-notice{
+  display:flex;align-items:flex-start;gap:12px;
+  padding:16px;background:var(--black3);
+  border:1px solid var(--black4);margin-bottom:24px;
 }
-.card-fields.show{display:block}
-.card-number-wrap{position:relative}
-.card-icons-inline{
-  position:absolute;right:12px;top:50%;transform:translateY(-50%);
-  display:flex;gap:4px;
+.sn-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.sn-title{
+  font-family:var(--f-mono);font-size:9px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--gold);margin-bottom:4px;
 }
-.card-i{font-size:9px;color:rgba(234,217,181,.22);border:1px solid rgba(184,137,42,.1);padding:2px 6px}
+.sn-text{font-size:11px;color:rgba(0,0,0,.38);line-height:1.8}
 
-/* STEP NAVIGATION */
-.step-nav{display:flex;gap:12px;justify-content:space-between;align-items:center;margin-top:28px;flex-wrap:wrap;gap:12px}
-.step-back{font-size:9.5px;letter-spacing:2px;text-transform:uppercase;color:rgba(234,217,181,.35);background:none;border:none;cursor:none;transition:color .3s;display:flex;align-items:center;gap:8px}
-.step-back:hover{color:var(--beige)}
-.btn-next{
-  background:var(--gold);color:var(--black);
-  padding:14px 40px;font-family:'Syne',sans-serif;font-weight:700;
-  font-size:10px;letter-spacing:3px;text-transform:uppercase;
-  border:none;cursor:none;position:relative;overflow:hidden;transition:transform .2s;
+/* Step navigation */
+.step-nav{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:20px 28px;background:var(--black);
+  border-top:1px solid var(--black3);
+  flex-wrap:wrap;gap:12px;
 }
-.btn-next::before{content:'';position:absolute;inset:0;background:var(--beige);transform:translateX(-100%);transition:transform .4s cubic-bezier(.16,1,.3,1)}
-.btn-next:hover::before{transform:translateX(0)}
-.btn-next:hover{transform:translateY(-2px)}
-.btn-next span{position:relative;z-index:1}
+.btn-back{
+  font-family:var(--f-mono);font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--grey3);
+  background:none;border:none;cursor:none;
+  transition:color .2s;display:flex;align-items:center;gap:6px;
+  text-decoration:none;
+}
+.btn-back:hover{color:var(--gold)}
 
-/* ORDER SUMMARY SIDEBAR */
-.order-summary{
-  background:rgba(10,6,2,.82);backdrop-filter:blur(14px);
-  border:1px solid rgba(184,137,42,.1);padding:28px;
-  position:sticky;top:100px;
+/* ── SIDEBAR ── */
+.checkout-sidebar{
+  position:sticky;top:calc(var(--total-nav) + 52px);
+  background:var(--black);border-left:none;
+  max-height:calc(100vh - var(--total-nav) - 52px);
+  overflow-y:auto;
 }
-.os-title{font-family:'Syne',sans-serif;font-size:9.5px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold-ll);margin-bottom:20px}
-.os-items{display:flex;flex-direction:column;gap:14px;margin-bottom:20px}
-.os-item{display:flex;gap:12px;align-items:center}
+.os-section{padding:22px;border-bottom:1px solid var(--black3)}
+.os-title{
+  font-family:var(--f-mono);font-size:9px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--grey3);margin-bottom:18px;
+}
+.os-item{
+  display:flex;gap:12px;align-items:center;
+  margin-bottom:16px;
+}
 .os-img{
-  width:52px;height:64px;border-radius:8px 8px 3px 3px;
-  flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  width:56px;height:72px;flex-shrink:0;
   position:relative;overflow:hidden;
+  border:1px solid var(--black3);
 }
-.os-cloth{width:60%;height:70%;border-radius:10px 10px 4px 4px;box-shadow:0 4px 12px rgba(0,0,0,.5)}
-.os-det{flex:1}
-.os-name{font-family:'Cormorant',serif;font-size:15px;color:var(--beige);line-height:1.2;margin-bottom:3px}
-.os-meta{font-size:9px;color:rgba(234,217,181,.35);letter-spacing:1px}
-.os-price{font-family:'Cormorant',serif;font-weight:600;font-size:15px;color:var(--gold);text-align:right;flex-shrink:0}
-.os-div{height:1px;background:rgba(184,137,42,.1);margin:16px 0}
-.os-row{display:flex;justify-content:space-between;margin-bottom:10px}
-.os-label{font-size:11px;color:rgba(234,217,181,.38)}
-.os-val{font-family:'Cormorant',serif;font-size:15px;color:rgba(234,217,181,.65)}
-.os-total-label{font-family:'Syne',sans-serif;font-size:9.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--beige)}
-.os-total{font-family:'Cormorant',serif;font-weight:600;font-size:26px;color:var(--gold)}
+.os-img img{width:100%;height:100%;object-fit:cover}
+.os-cloth-wrap{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+}
+.os-cloth{
+  width:52%;height:66%;
+  border-radius:10px 10px 4px 4px;
+  box-shadow:0 4px 12px rgba(0,0,0,.5);
+}
+.os-item-info{flex:1}
+.os-item-name{
+  font-family:var(--f-display);font-size:14px;
+  letter-spacing:.04em;text-transform:uppercase;
+  color:var(--white);line-height:1;margin-bottom:4px;
+}
+.os-item-meta{
+  font-family:var(--f-mono);font-size:9px;letter-spacing:.08em;
+  color:var(--grey3);
+}
+.os-item-price{
+  font-family:var(--f-mono);font-size:12px;color:var(--gold);
+  flex-shrink:0;
+}
+.os-row{
+  display:flex;justify-content:space-between;
+  font-family:var(--f-mono);font-size:10.5px;
+  margin-bottom:10px;
+}
+.os-row-label{color:var(--grey3)}
+.os-row-val{color:rgba(0,0,0,.65)}
+.os-total-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding-top:14px;border-top:1px solid var(--black3);
+}
+.os-total-label{
+  font-family:var(--f-mono);font-size:10px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--white);
+}
+.os-total-val{
+  font-family:var(--f-display);font-size:30px;
+  letter-spacing:.04em;color:var(--gold);
+}
 
-/* SUCCESS SCREEN */
+/* ── SUCCESS SCREEN ── */
 .success-screen{
-  display:none;
-  flex-direction:column;align-items:center;justify-content:center;
-  text-align:center;min-height:60vh;padding:60px 40px;
+  display:none;flex-direction:column;align-items:center;
+  justify-content:center;text-align:center;
+  padding:80px 40px;min-height:60vh;gap:20px;
 }
 .success-screen.show{display:flex}
-.success-anim{
-  width:80px;height:80px;border-radius:50%;
-  border:2px solid var(--gold);
+.success-check{
+  width:72px;height:72px;border-radius:50%;
+  border:1.5px solid var(--gold);
   display:flex;align-items:center;justify-content:center;
-  font-size:28px;margin-bottom:28px;
-  animation:successPop .6s cubic-bezier(.16,1,.3,1);
+  font-size:24px;color:var(--gold);
+  animation:pop .5s cubic-bezier(.16,1,.3,1);
 }
-@keyframes successPop{from{transform:scale(0)}to{transform:scale(1)}}
-.success-num{font-family:'Syne',sans-serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:16px}
-.success-title{font-family:'Cormorant',serif;font-weight:300;font-size:clamp(32px,5vw,56px);line-height:.95;color:var(--beige);margin-bottom:16px}
-.success-title em{font-style:italic;color:var(--gold)}
-.success-sub{font-size:13px;color:rgba(234,217,181,.45);line-height:2;max-width:400px;margin-bottom:36px}
+@keyframes pop{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+.success-order-num{
+  font-family:var(--f-mono);font-size:10px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--gold);
+}
+.success-title{
+  font-family:var(--f-display);
+  font-size:clamp(36px,5vw,60px);
+  letter-spacing:.05em;text-transform:uppercase;
+  color:var(--white);line-height:.92;
+}
+.success-title span{color:var(--gold)}
+.success-sub{
+  font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;
+  color:var(--grey3);line-height:1.8;max-width:400px;
+}
 
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.95)}}
-
-/* ── MOBILE ── */
+/* ── RESPONSIVE ── */
+@media(max-width:960px){
+  .checkout-wrap{grid-template-columns:1fr}
+  .checkout-main{border-right:none}
+  .checkout-sidebar{position:static;border-top:1px solid var(--black3);max-height:none}
+}
 @media(max-width:768px){
-  .checkout-page{padding:80px 16px 60px}
-  .checkout-layout{grid-template-columns:1fr}
-  .order-summary{position:relative;top:auto}
-  .steps{gap:0;padding:0 8px}
-  .step{padding:0 8px}
-  .step-label{display:none}
-  .step-line{width:28px}
-  .form-panel{padding:24px 20px}
+  .step-bar{padding:0 12px;overflow-x:auto}
+  .step-item{padding-right:14px}
+  .step-item:not(:last-child)::after{margin-right:14px}
+  .step-lbl{display:none}
+  .form-section{padding:24px 16px}
+  .step-nav{padding:16px}
   .field-row{grid-template-columns:1fr}
+  .os-section{padding:16px}
+  .success-screen{padding:48px 20px}
 }
 </style>
 </head>
 <body>
-<div id="cd"></div><div id="cr"></div><div id="spg"></div>
-<div style="position:fixed;inset:0;background:radial-gradient(ellipse 60% 50% at 20% 30%,rgba(26,53,40,.15) 0%,transparent 70%),radial-gradient(ellipse 40% 40% at 80% 70%,rgba(184,137,42,.05) 0%,transparent 60%);pointer-events:none;z-index:1"></div>
+<div id="nav-root"></div>
 
-<nav id="nav" class="sc">
-  <a href="index.html" class="nlogo">
-    <svg class="nlogo-svg" viewBox="0 0 100 100" fill="none">
-      <path d="M50 4C72 4,90 16,92 32C94 46,84 54,68 56C82 58,94 66,94 80C94 92,78 98,58 98C36 98,14 88,10 72C7 60,14 52,28 50C14 46,6 38,8 24C10 10,28 4,50 4Z" fill="#0A0704"/>
-      <path d="M14 54C20 44,34 40,48 46C60 51,68 50,74 44" stroke="rgba(234,217,181,.95)" stroke-width="6" fill="none" stroke-linecap="round"/>
-      <ellipse cx="56" cy="32" rx="8" ry="11" fill="rgba(234,217,181,.93)" transform="rotate(-10 56 32)"/>
-      <ellipse cx="60" cy="74" rx="14" ry="13" fill="rgba(234,217,181,.92)"/>
-    </svg>
-    <span class="nlogo-nm">tonú</span>
-  </a>
-  <div style="font-family:'Syne',sans-serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:rgba(234,217,181,.3)">Paiement sécurisé 🔒</div>
-  <a href="cart.html" class="nbtn cart-badge-wrap">
-    <span class="cart-btn-txt">Panier — 0</span>
-    <span class="cart-count" style="display:none">0</span>
-  </a>
-</nav>
-
-<main class="checkout-page">
-  <!-- STEPS -->
-  <div class="steps" id="stepsBar">
-    <div class="step active" id="s1"><div class="step-num">1</div><div class="step-label">Livraison</div></div>
-    <div class="step-line" id="sl1"></div>
-    <div class="step" id="s2"><div class="step-num">2</div><div class="step-label">Paiement</div></div>
-    <div class="step-line" id="sl2"></div>
-    <div class="step" id="s3"><div class="step-num">3</div><div class="step-label">Confirmation</div></div>
+<!-- STEP BAR -->
+<div class="step-bar" id="step-bar">
+  <div class="step-item active" id="sb1">
+    <div class="step-num">1</div>
+    <div class="step-lbl">Livraison</div>
   </div>
-
-  <!-- SUCCESS SCREEN (hidden initially) -->
-  <div class="success-screen" id="successScreen">
-    <div class="success-anim">✓</div>
-    <div class="success-num">Commande #SW-<span id="orderNum">00000</span></div>
-    <h2 class="success-title">Merci pour<br>ta <em>commande</em> !</h2>
-    <p class="success-sub">Un email de confirmation vient d'être envoyé. Ta commande sera expédiée sous 24–48h. Bienvenue dans la famille tonú.</p>
-    <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
-      <a href="index.html" class="btn-p"><span>Continuer les achats</span></a>
-      <a href="index.html" class="btn-g">Retour à l'accueil</a>
-    </div>
+  <div class="step-item" id="sb2">
+    <div class="step-num">2</div>
+    <div class="step-lbl">Paiement</div>
   </div>
+  <div class="step-item" id="sb3">
+    <div class="step-num">3</div>
+    <div class="step-lbl">Confirmation</div>
+  </div>
+</div>
 
-  <!-- CHECKOUT FORM -->
-  <div class="checkout-layout" id="checkoutLayout">
-    <!-- FORM -->
-    <div>
-      <!-- STEP 1: DELIVERY -->
-      <div id="step1">
-        <div class="form-panel reveal">
-          <div class="fp-title"><span class="fp-icon">📦</span>Adresse de livraison</div>
-          <div class="field-row">
-            <div class="field"><label>Prénom *</label><input type="text" id="firstName" placeholder="Kwame" required/></div>
-            <div class="field"><label>Nom *</label><input type="text" id="lastName" placeholder="Asante" required/></div>
-          </div>
-          <div class="field"><label>Email *</label><input type="email" id="email" placeholder="kwame@example.com" required/></div>
-          <div class="field"><label>Téléphone</label><input type="tel" id="phone" placeholder="+33 6 00 00 00 00"/></div>
-          <div class="field"><label>Adresse *</label><input type="text" id="addr1" placeholder="12 rue des Acajas" required/></div>
-          <div class="field"><label>Complément</label><input type="text" id="addr2" placeholder="Apt 3B, Porte D"/></div>
-          <div class="field-row">
-            <div class="field"><label>Code postal *</label><input type="text" id="zip" placeholder="75011" required/></div>
-            <div class="field"><label>Ville *</label><input type="text" id="city" placeholder="Paris" required/></div>
-          </div>
-          <div class="field"><label>Pays *</label>
-            <select id="country">
-              <option value="FR">France</option>
-              <option value="BE">Belgique</option>
-              <option value="CH">Suisse</option>
-              <option value="CI">Côte d'Ivoire</option>
-              <option value="SN">Sénégal</option>
-              <option value="CM">Cameroun</option>
-              <option value="MA">Maroc</option>
-              <option value="Other">Autre</option>
-            </select>
-          </div>
-          <div class="step-nav">
-            <a href="cart.html" class="step-back">← Retour au panier</a>
-            <button class="btn-next" onclick="goToStep(2)"><span>Continuer vers le paiement →</span></button>
-          </div>
+<!-- SUCCESS SCREEN (hidden) -->
+<div class="success-screen" id="success-screen">
+  <div class="success-check">✓</div>
+  <div class="success-order-num">Commande #SW-<span id="success-num">00000</span></div>
+  <h2 class="success-title">Merci pour<br>ta <span>commande</span> !</h2>
+  <p class="success-sub">Un email de confirmation t'a été envoyé. Ta commande sera expédiée sous 24–48h. Bienvenue dans la famille tonú.</p>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:12px">
+    <a href="index.html" class="btn btn-primary"><span>Continuer les achats →</span></a>
+    <a href="index.html" class="btn btn-secondary"><span>Retour à l'accueil</span></a>
+  </div>
+</div>
+
+<!-- CHECKOUT LAYOUT -->
+<div class="checkout-wrap" id="checkout-layout">
+
+  <!-- MAIN -->
+  <div class="checkout-main">
+
+    <!-- STEP 1 — DELIVERY -->
+    <div id="step1">
+      <div class="form-section">
+        <div class="form-section-title"><span class="form-section-icon">📦</span>Adresse de livraison</div>
+
+        <div class="field-row">
+          <div class="field"><label>Prénom *</label><input type="text" id="firstName" placeholder="Kwame" autocomplete="given-name"/></div>
+          <div class="field"><label>Nom *</label><input type="text" id="lastName" placeholder="Asante" autocomplete="family-name"/></div>
+        </div>
+        <div class="field"><label>Email *</label><input type="email" id="email" placeholder="kwame@example.com" autocomplete="email"/></div>
+        <div class="field"><label>Téléphone</label><input type="tel" id="phone" placeholder="+229 00 00 00 00" autocomplete="tel"/></div>
+        <div class="field"><label>Adresse *</label><input type="text" id="addr1" placeholder="12 rue des Cocotiers" autocomplete="address-line1"/></div>
+        <div class="field"><label>Complément</label><input type="text" id="addr2" placeholder="Apt 3B, Résidence Flora" autocomplete="address-line2"/></div>
+        <div class="field-row">
+          <div class="field"><label>Code postal *</label><input type="text" id="zip" placeholder="01 BP 1234" autocomplete="postal-code"/></div>
+          <div class="field"><label>Ville *</label><input type="text" id="city" placeholder="Cotonou" autocomplete="address-level2"/></div>
+        </div>
+        <div class="field">
+          <label>Pays *</label>
+          <select id="country" autocomplete="country">
+            <option value="BJ">Bénin</option>
+            <option value="CI">Côte d'Ivoire</option>
+            <option value="SN">Sénégal</option>
+            <option value="TG">Togo</option>
+            <option value="CM">Cameroun</option>
+            <option value="MA">Maroc</option>
+            <option value="FR">France</option>
+            <option value="BE">Belgique</option>
+            <option value="CH">Suisse</option>
+            <option value="Other">Autre</option>
+          </select>
         </div>
       </div>
-
-      <!-- STEP 2: PAYMENT -->
-      <div id="step2" style="display:none">
-        <div class="form-panel reveal">
-          <div class="fp-title"><span class="fp-icon">💳</span>Paiement sécurisé</div>
-
-          <!-- Moyens de paiement acceptés -->
-          <div style="margin-bottom:24px">
-            <div style="font-family:'Syne',sans-serif;font-size:8.5px;letter-spacing:2.5px;text-transform:uppercase;color:rgba(234,217,181,.35);margin-bottom:14px">Moyens de paiement acceptés</div>
-            <div style="display:flex;gap:10px;flex-wrap:wrap">
-
-              <!-- MTN Mobile Money -->
-              <div style="display:flex;align-items:center;gap:10px;border:1px solid rgba(184,137,42,.15);padding:10px 16px;background:rgba(184,137,42,.04)">
-                <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect width="36" height="36" rx="6" fill="#FFCC00"/>
-                  <text x="50%" y="44%" dominant-baseline="middle" text-anchor="middle" font-family="Arial Black, sans-serif" font-weight="900" font-size="9" fill="#000">MTN</text>
-                  <text x="50%" y="72%" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="5.5" fill="#000">MoMo</text>
-                </svg>
-                <span style="font-size:11px;color:var(--beige);font-weight:500">MTN Mobile Money</span>
-              </div>
-
-              <!-- Moov Money -->
-              <div style="display:flex;align-items:center;gap:10px;border:1px solid rgba(184,137,42,.15);padding:10px 16px;background:rgba(184,137,42,.04)">
-                <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect width="36" height="36" rx="6" fill="#0066B3"/>
-                  <rect x="0" y="24" width="36" height="12" rx="0" fill="#E30613"/>
-                  <text x="50%" y="40%" dominant-baseline="middle" text-anchor="middle" font-family="Arial Black, sans-serif" font-weight="900" font-size="7.5" fill="#FFF">MOOV</text>
-                  <text x="50%" y="72%" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="6" fill="#FFF">Money</text>
-                </svg>
-                <span style="font-size:11px;color:var(--beige);font-weight:500">Moov Money</span>
-              </div>
-
-              <!-- Visa + Mastercard -->
-              <div style="display:flex;align-items:center;gap:8px;border:1px solid rgba(184,137,42,.15);padding:10px 16px;background:rgba(184,137,42,.04)">
-                <svg width="38" height="24" viewBox="0 0 38 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect width="38" height="24" rx="4" fill="#1A1F71"/>
-                  <text x="50%" y="56%" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="11" fill="#FFFFFF" font-style="italic">VISA</text>
-                </svg>
-                <svg width="38" height="24" viewBox="0 0 38 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect width="38" height="24" rx="4" fill="#252525"/>
-                  <circle cx="15" cy="12" r="7" fill="#EB001B"/>
-                  <circle cx="23" cy="12" r="7" fill="#F79E1B"/>
-                  <path d="M19 6.8a7 7 0 0 1 0 10.4A7 7 0 0 1 19 6.8z" fill="#FF5F00"/>
-                </svg>
-              </div>
-
-            </div>
-          </div>
-
-          <!-- Info sécurité -->
-          <div style="background:rgba(184,137,42,.05);border:1px solid rgba(184,137,42,.1);padding:16px;margin-bottom:24px;display:flex;align-items:flex-start;gap:12px">
-            <span style="font-size:18px;flex-shrink:0">🔒</span>
-            <div>
-              <div style="font-family:'Syne',sans-serif;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:6px">Paiement 100% sécurisé</div>
-              <div style="font-size:11px;color:rgba(234,217,181,.4);line-height:1.8">Vos données bancaires sont chiffrées et traitées par FedaPay. tonú ne stocke aucune information de paiement.</div>
-            </div>
-          </div>
-
-          <!-- Récapitulatif adresse -->
-          <div style="background:rgba(184,137,42,.05);border:1px solid rgba(184,137,42,.1);padding:16px;margin-bottom:28px">
-            <div style="font-family:'Syne',sans-serif;font-size:8.5px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:10px">Livraison à</div>
-            <div id="addrReview" style="font-size:12px;color:rgba(234,217,181,.5);line-height:1.8"></div>
-            <button onclick="goToStep(1)" style="font-size:9px;color:var(--gold);background:none;border:none;cursor:none;margin-top:8px;text-decoration:underline">Modifier</button>
-          </div>
-
-          <div class="step-nav">
-            <button class="step-back" onclick="goToStep(1)">← Retour</button>
-            <button class="btn-next" id="payBtn" onclick="placeOrder()">
-              <span>Payer maintenant →</span>
-            </button>
-          </div>
-        </div>
+      <div class="step-nav">
+        <a href="cart.html" class="btn-back">← Retour au panier</a>
+        <button class="btn btn-primary btn-lg" onclick="goStep(2)"><span>Continuer vers le paiement →</span></button>
       </div>
     </div>
 
-    <!-- ORDER SUMMARY -->
-    <div class="order-summary reveal rd1">
+    <!-- STEP 2 — PAYMENT -->
+    <div id="step2" style="display:none">
+      <div class="form-section">
+        <div class="form-section-title"><span class="form-section-icon">💳</span>Paiement sécurisé</div>
+
+        <!-- Accepted methods display -->
+        <div style="margin-bottom:24px">
+          <div style="font-family:var(--f-mono);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--grey2);margin-bottom:12px">Moyens de paiement acceptés</div>
+          <div class="pay-methods">
+            <div class="pay-opt sel">
+              <div class="pay-opt-l">
+                <div class="pay-radio"></div>
+                <div>
+                  <div class="pay-name">Mobile Money & Carte bancaire</div>
+                  <div style="font-family:var(--f-mono);font-size:9px;color:var(--grey3);margin-top:3px">Via FedaPay — paiement sécurisé</div>
+                </div>
+              </div>
+              <div class="pay-icons-row">
+                <span class="pay-badge mtn">MTN</span>
+                <span class="pay-badge moov">Moov</span>
+                <span class="pay-badge visa">VISA</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Security notice -->
+        <div class="security-notice">
+          <span class="sn-icon">🔒</span>
+          <div>
+            <div class="sn-title">Paiement 100% sécurisé</div>
+            <div class="sn-text">Vos données sont chiffrées et traitées exclusivement par FedaPay. tonú ne stocke aucune information de paiement.</div>
+          </div>
+        </div>
+
+        <!-- Address recap -->
+        <div class="addr-review">
+          <div class="addr-review-label">Livraison à</div>
+          <div class="addr-review-text" id="addr-review-text">—</div>
+          <button class="addr-edit" onclick="goStep(1)">Modifier l'adresse</button>
+        </div>
+      </div>
+
+      <div class="step-nav">
+        <button class="btn-back" onclick="goStep(1)">← Retour</button>
+        <button class="btn btn-primary btn-lg" id="pay-btn" onclick="placeOrder()">
+          <span id="pay-btn-text">Payer maintenant →</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR — ORDER SUMMARY -->
+  <div class="checkout-sidebar">
+    <div class="os-section">
       <div class="os-title">Votre commande</div>
-      <div class="os-items" id="osSummary"></div>
-      <div class="os-div"></div>
-      <div class="os-row"><span class="os-label">Sous-total</span><span class="os-val" id="osSub">0 FCFA</span></div>
-      <div class="os-row"><span class="os-label">Livraison</span><span class="os-val">Offerte</span></div>
-      <div class="os-div"></div>
-      <div class="os-row">
-        <span class="os-total-label">Total</span>
-        <span class="os-total" id="osTotal">0 FCFA</span>
+      <div id="os-items"></div>
+    </div>
+    <div class="os-section">
+      <div class="os-row"><span class="os-row-label">Sous-total</span><span class="os-row-val" id="os-sub">0 FCFA</span></div>
+      <div class="os-row"><span class="os-row-label">Livraison</span><span class="os-row-val">Offerte</span></div>
+      <div class="os-total-row">
+        <span class="os-total-label">Total TTC</span>
+        <span class="os-total-val" id="os-total">0 FCFA</span>
       </div>
-      <!-- Reassurance -->
-      <div style="display:flex;flex-direction:column;gap:7px;margin-top:20px">
-        <div style="display:flex;align-items:center;gap:9px;font-size:10px;color:rgba(234,217,181,.28)"><span>🔒</span>Paiement sécurisé SSL</div>
-        <div style="display:flex;align-items:center;gap:9px;font-size:10px;color:rgba(234,217,181,.28)"><span>↩</span>Retours gratuits 30 jours</div>
-        <div style="display:flex;align-items:center;gap:9px;font-size:10px;color:rgba(234,217,181,.28)"><span>✦</span>Service client 7j/7</div>
+    </div>
+    <div class="os-section">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;gap:9px;font-family:var(--f-mono);font-size:9.5px;color:var(--grey2)"><span style="color:var(--gold)">🔒</span>Paiement SSL sécurisé</div>
+        <div style="display:flex;align-items:center;gap:9px;font-family:var(--f-mono);font-size:9.5px;color:var(--grey2)"><span style="color:var(--gold)">↩</span>Retours gratuits 30 jours</div>
+        <div style="display:flex;align-items:center;gap:9px;font-family:var(--f-mono);font-size:9.5px;color:var(--grey2)"><span style="color:var(--gold)">✦</span>Service client 7j/7</div>
       </div>
     </div>
   </div>
-</main>
+</div>
+
+<div id="footer-root"></div>
 
 <script src="shared.js"></script>
 <script>
-// ── EmailJS Init ──
+/* ── Init ── */
 emailjs.init('XP3Kvreyp6evoSPTn');
+const FEDAPAY_KEY = 'pk_sandbox_zWoi-ZCdl6fuy_zm6iCmaPAr';
+const FEDAPAY_ENV = 'sandbox'; // change to 'live' when going live
 
-// ── FedaPay Config ──
-const FEDAPAY_PUBLIC_KEY = 'pk_sandbox_zWoi-ZCdl6fuy_zm6iCmaPAr';
-const FEDAPAY_ENV        = 'sandbox'; // passer à 'live' quand tu actives le compte Live
+document.getElementById('nav-root').innerHTML = buildNavHTML({});
+document.getElementById('footer-root').innerHTML = buildFooterHTML();
+initShared();
 
 let currentStep = 1;
-const clothColors = ['#D4A84B','#EFE8D8','#3D6E56','#4D3018','#EDD98A'];
-const bgColors    = ['rgba(30,61,47,.88)','rgba(42,26,8,.88)','rgba(12,12,28,.88)','rgba(30,18,8,.88)','rgba(45,82,64,.88)'];
 
-// ── Render order summary sidebar ──
+/* ── Render sidebar summary ── */
 function renderSummary(){
   const items = CART.items;
   const sub   = CART.total();
-  document.getElementById('osSub').textContent   = `${sub.toLocaleString('fr-FR')} FCFA`;
-  document.getElementById('osTotal').textContent = `${sub.toLocaleString('fr-FR')} FCFA`;
-  const container = document.getElementById('osSummary');
-  if(items.length === 0){
-    container.innerHTML = `<div style="font-size:12px;color:rgba(234,217,181,.3);text-align:center;padding:20px">Panier vide — <a href="cart.html" style="color:var(--gold)">retourner au panier</a></div>`;
+  document.getElementById('os-sub').textContent   = `${sub.toLocaleString('fr-FR')} FCFA`;
+  document.getElementById('os-total').textContent = `${sub.toLocaleString('fr-FR')} FCFA`;
+
+  const container = document.getElementById('os-items');
+  if(!items.length){
+    container.innerHTML = `<div style="font-family:var(--f-mono);font-size:10px;color:var(--grey2);text-align:center;padding:16px">
+      Panier vide — <a href="cart.html" style="color:var(--gold)">retour au panier</a></div>`;
     return;
   }
   container.innerHTML = items.map(item => {
-    const pi      = Math.max(0, PRODUCTS.findIndex(p => p.id === item.id));
-    const prod    = PRODUCTS.find(p => p.id === item.id);
-    const imgSrc  = item.image || prod?.image || '';
-    const imgHTML = imgSrc
-      ? `<img src="${imgSrc}" alt="${item.name}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">`
-      : '';
-    const clothHTML = `<div class="os-cloth" style="background:${clothColors[pi]};${imgSrc ? 'display:none' : ''}"></div>`;
-    return `<div class="os-item">
-      <div class="os-img" style="background:${bgColors[pi]}">
-        ${imgHTML}${clothHTML}
-      </div>
-      <div class="os-det">
-        <div class="os-name">${item.name}</div>
-        <div class="os-meta">Taille ${item.size} · Qté ${item.qty}</div>
-      </div>
-      <div class="os-price">${(item.price * item.qty).toLocaleString('fr-FR')} FCFA</div>
-    </div>`;
+    const idx  = Math.max(0, PRODUCTS.findIndex(p => p.id === item.id));
+    const prod = PRODUCTS.find(p => p.id === item.id);
+    const img  = item.image || prod?.image || '';
+    const bg   = prod?.bgGrad || BG_GRADS[idx % BG_GRADS.length];
+    const clr  = prod?.clothColor || CLOTH_COLORS[idx % CLOTH_COLORS.length];
+    return `
+      <div class="os-item">
+        <div class="os-img" style="background:${bg}">
+          ${img
+            ? `<img src="${img}" alt="${item.name}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+               <div class="os-cloth-wrap" style="display:none"><div class="os-cloth" style="background:${clr}"></div></div>`
+            : `<div class="os-cloth-wrap"><div class="os-cloth" style="background:${clr}"></div></div>`
+          }
+        </div>
+        <div class="os-item-info">
+          <div class="os-item-name">${item.name}</div>
+          <div class="os-item-meta">Taille ${item.size} · Qté ${item.qty}</div>
+        </div>
+        <div class="os-item-price">${(item.price * item.qty).toLocaleString('fr-FR')} FCFA</div>
+      </div>`;
   }).join('');
 }
 
-// ── Step navigation ──
-function goToStep(n){
+/* ── Step navigation ── */
+function goStep(n){
   if(n === 2){
-    const req = ['firstName','lastName','email','addr1','zip','city'];
-    for(const id of req){
-      if(!document.getElementById(id)?.value.trim()){
-        showToast('Remplis tous les champs obligatoires', 'error');
-        document.getElementById(id)?.focus();
+    const required = ['firstName','lastName','email','addr1','zip','city'];
+    for(const id of required){
+      const el = document.getElementById(id);
+      if(!el || !el.value.trim()){
+        showToast('Remplis tous les champs obligatoires (*)', 'error');
+        el?.focus();
         return;
       }
     }
-    const f  = document.getElementById('firstName').value;
-    const l  = document.getElementById('lastName').value;
-    const a  = document.getElementById('addr1').value;
-    const a2 = document.getElementById('addr2').value;
-    const z  = document.getElementById('zip').value;
-    const c  = document.getElementById('city').value;
+    // Validate email
+    const emailVal = document.getElementById('email').value.trim();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)){
+      showToast('Adresse email invalide', 'error');
+      document.getElementById('email').focus();
+      return;
+    }
+    // Build address recap
+    const f  = document.getElementById('firstName').value.trim();
+    const l  = document.getElementById('lastName').value.trim();
+    const a1 = document.getElementById('addr1').value.trim();
+    const a2 = document.getElementById('addr2').value.trim();
+    const z  = document.getElementById('zip').value.trim();
+    const c  = document.getElementById('city').value.trim();
     const co = document.getElementById('country').value;
-    document.getElementById('addrReview').innerHTML = `${f} ${l}<br>${a}${a2 ? ', ' + a2 : ''}<br>${z} ${c}, ${co}`;
+    document.getElementById('addr-review-text').innerHTML =
+      `${f} ${l}<br>${a1}${a2 ? ', ' + a2 : ''}<br>${z} ${c}, ${co}`;
   }
+
   currentStep = n;
   document.getElementById('step1').style.display = n === 1 ? 'block' : 'none';
   document.getElementById('step2').style.display = n === 2 ? 'block' : 'none';
+
+  // Update step bar
   [1,2,3].forEach(i => {
-    const el = document.getElementById('s' + i);
-    el.className = 'step' + (i === n ? ' active' : i < n ? ' done' : '');
-    const line = document.getElementById('sl' + i);
-    if(line) line.className = 'step-line' + (i < n ? ' done' : '');
+    const el = document.getElementById('sb' + i);
+    el.className = 'step-item' +
+      (i === n ? ' active' : i < n ? ' done' : '');
   });
+
   window.scrollTo({top:0, behavior:'smooth'});
 }
 
-// ── Email de confirmation ──
-function sendConfirmationEmail(orderNum){
+/* ── Send confirmation email ── */
+function sendEmail(orderNum){
   const firstName = document.getElementById('firstName').value.trim();
   const lastName  = document.getElementById('lastName').value.trim();
   const email     = document.getElementById('email').value.trim();
-  const addr1     = document.getElementById('addr1').value.trim();
-  const addr2     = document.getElementById('addr2').value.trim();
-  const zip       = document.getElementById('zip').value.trim();
-  const city      = document.getElementById('city').value.trim();
-  const country   = document.getElementById('country').value.trim();
+  const a1 = document.getElementById('addr1').value.trim();
+  const a2 = document.getElementById('addr2').value.trim();
+  const z  = document.getElementById('zip').value.trim();
+  const c  = document.getElementById('city').value.trim();
+  const co = document.getElementById('country').value;
 
-  const items   = CART.items.map(i => `• ${i.name} — Taille ${i.size} x${i.qty} — ${(i.price * i.qty).toLocaleString('fr-FR')} FCFA`).join('\n');
-  const total   = CART.total().toLocaleString('fr-FR');
-  const address = `${addr1}${addr2 ? ', ' + addr2 : ''}\n${zip} ${city}, ${country}`;
+  const itemLines = CART.items.map(i =>
+    `• ${i.name} — Taille ${i.size} × ${i.qty} — ${(i.price * i.qty).toLocaleString('fr-FR')} FCFA`
+  ).join('\n');
 
   emailjs.send('service_osq0wkq', 'template_3uivjj8', {
-    to_email        : email,
-    client_name     : `${firstName} ${lastName}`,
-    order_number    : `SW-${orderNum}`,
-    order_total     : `${total} FCFA`,
-    order_items     : items,
-    shipping_address: address
+    to_email:         email,
+    client_name:      `${firstName} ${lastName}`,
+    order_number:     `SW-${orderNum}`,
+    order_total:      `${CART.total().toLocaleString('fr-FR')} FCFA`,
+    order_items:      itemLines,
+    shipping_address: `${a1}${a2 ? ', '+a2:''}\n${z} ${c}, ${co}`
   })
-  .then(() => console.log('Email envoyé ✓'))
-  .catch(err => console.warn('Email non envoyé:', err));
+  .then(()=>console.log('✓ Email envoyé'))
+  .catch(e=>console.warn('Email non envoyé:', e));
 }
 
-// ── Écran de succès ──
+/* ── Show success screen ── */
 function showSuccess(orderNum){
   CART.items = []; CART.save();
-  document.getElementById('checkoutLayout').style.display = 'none';
-  document.getElementById('stepsBar').style.display       = 'none';
-  const ss = document.getElementById('successScreen');
-  ss.style.display = 'flex';
-  document.getElementById('orderNum').textContent = orderNum;
-  [1,2,3].forEach(i => document.getElementById('s' + i).className = 'step done');
-  sendConfirmationEmail(orderNum);
+  document.getElementById('checkout-layout').style.display = 'none';
+  document.getElementById('step-bar').style.display        = 'none';
+  const s = document.getElementById('success-screen');
+  s.classList.add('show');
+  document.getElementById('success-num').textContent = orderNum;
+  [1,2,3].forEach(i => document.getElementById('sb'+i).className = 'step-item done');
+  sendEmail(orderNum);
   window.scrollTo({top:0, behavior:'smooth'});
 }
 
-// ── Paiement via FedaPay ──
+/* ── FedaPay checkout ── */
 function placeOrder(){
-  if(CART.items.length === 0){
+  if(!CART.items.length){
     showToast('Ton panier est vide', 'error');
     return;
   }
 
-  const orderNum    = Math.floor(10000 + Math.random() * 90000);
-  const firstName   = document.getElementById('firstName').value.trim();
-  const lastName    = document.getElementById('lastName').value.trim();
-  const email       = document.getElementById('email').value.trim();
-  const phone       = document.getElementById('phone').value.trim();
-  const amount      = CART.total();
-  const description = CART.items.map(i => `${i.name} x${i.qty}`).join(', ');
+  const btn     = document.getElementById('pay-btn');
+  const btnTxt  = document.getElementById('pay-btn-text');
+  const orderNum = Math.floor(10000 + Math.random() * 90000);
 
-  // Désactiver le bouton pendant l'ouverture
-  const btn = document.getElementById('payBtn');
+  const firstName = document.getElementById('firstName').value.trim();
+  const lastName  = document.getElementById('lastName').value.trim();
+  const email     = document.getElementById('email').value.trim();
+  const phone     = document.getElementById('phone').value.trim();
+  const amount    = CART.total();
+  const desc      = CART.items.map(i => `${i.name} ×${i.qty}`).join(', ');
+
+  // Disable button
   btn.disabled = true;
-  btn.innerHTML = '<span>Chargement...</span>';
+  btnTxt.textContent = 'Chargement...';
 
   try {
     FedaPay.init({
-      public_key  : FEDAPAY_PUBLIC_KEY,
-      environment : FEDAPAY_ENV,
-      transaction : {
-        amount      : amount,
-        description : `Commande tonú #SW-${orderNum} — ${description}`
+      public_key:  FEDAPAY_KEY,
+      environment: FEDAPAY_ENV,
+      transaction: {
+        amount:      amount,
+        description: `Commande tonú #SW-${orderNum} — ${desc}`
       },
       customer: {
-        email    : email,
+        email:     email,
         firstname: firstName,
-        lastname : lastName,
+        lastname:  lastName,
         ...(phone ? { phone_number: { number: phone, country: 'bj' } } : {})
       },
       onComplete: function(transaction){
-        // Remettre le bouton dans tous les cas
-        btn.disabled = false;
-        btn.innerHTML = '<span>Payer maintenant →</span>';
+        // Re-enable button immediately
+        btn.disabled  = false;
+        btnTxt.textContent = 'Payer maintenant →';
 
-        const trx = transaction.transaction;
-        if(trx && (trx.status === 'approved' || trx.status === 'successful')){
+        const trx    = transaction.transaction;
+        const status = trx?.status;
+
+        if(status === 'approved' || status === 'successful'){
           showSuccess(orderNum);
         } else if(transaction.reason === 'DIALOG DISMISSED'){
-          // Client a fermé la popup — on ne fait rien
-          showToast('Paiement annulé. Tu peux réessayer quand tu veux.');
+          // User closed popup — do nothing, let them retry
+          showToast('Paiement annulé. Tu peux réessayer.');
         } else {
-          showToast('Paiement non complété. Réessaie.', 'error');
+          showToast(`Paiement non complété (${status || 'erreur'}). Réessaie.`, 'error');
         }
       }
     }).open();
 
-    // Remettre le bouton immédiatement après l'ouverture du popup
-    btn.disabled = false;
-    btn.innerHTML = '<span>Payer maintenant →</span>';
+    // Re-enable right after .open() to avoid stuck state
+    btn.disabled  = false;
+    btnTxt.textContent = 'Payer maintenant →';
 
   } catch(err){
-    console.error('FedaPay erreur:', err);
-    btn.disabled = false;
-    btn.innerHTML = '<span>Payer maintenant →</span>';
-    showToast('Erreur lors de l\'ouverture du paiement. Réessaie.', 'error');
+    console.error('FedaPay error:', err);
+    btn.disabled  = false;
+    btnTxt.textContent = 'Payer maintenant →';
+    showToast('Erreur ouverture paiement. Réessaie.', 'error');
   }
 }
 
+/* ── Boot ── */
 renderSummary();
-
 </script>
 </body>
 </html>
