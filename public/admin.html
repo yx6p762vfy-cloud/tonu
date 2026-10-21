@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<link rel="icon" type="image/jpeg" href="TonuIcon.jpeg"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>tonú Privé — Modération</title>
+<link rel="stylesheet" href="shared.css"/>
+<style>
+.admin-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+.admin-head h1{font-family:var(--f-display);font-size:clamp(34px,5vw,48px);text-transform:uppercase;letter-spacing:.04em;line-height:.95;margin-bottom:6px}
+.admin-head p{font-size:12px;color:var(--grey3);line-height:1.7;max-width:560px}
+.admin-stats{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--line);border:1px solid var(--black4);margin-bottom:24px}
+.admin-stat{background:var(--black);padding:16px 14px;text-align:center}
+.admin-stat b{
+  display:block;font-family:var(--f-display);font-size:30px;letter-spacing:.04em;line-height:1.1;
+  background:var(--grad-text);
+  -webkit-background-clip:text;background-clip:text;
+  color:transparent;-webkit-text-fill-color:transparent;
+}
+.admin-stat span{font-family:var(--f-mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--grey2)}
+.admin-tabs{display:flex;border:1px solid var(--black4);margin-bottom:20px;overflow-x:auto}
+.admin-tab{flex:1;min-width:120px;padding:12px 10px;background:transparent;border:none;border-right:1px solid var(--black4);cursor:pointer;font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--grey3);transition:all .2s;white-space:nowrap}
+.admin-tab:last-child{border-right:none}
+.admin-tab:hover{background:rgba(255,255,255,.07);color:var(--white)}
+.admin-tab.active{background:var(--grad);color:#fff}
+.admin-tab .count{display:inline-block;margin-left:6px;font-size:9px;opacity:.8}
+.mod-item{display:grid;grid-template-columns:150px minmax(0,1fr) 170px;border:1px solid var(--black4);background:var(--black);margin-bottom:2px;overflow:hidden}
+.mod-img{height:180px;background:var(--black3);overflow:hidden;display:flex;align-items:center;justify-content:center;color:var(--grey2);font-size:22px}
+.mod-img img{width:100%;height:100%;object-fit:cover}
+.mod-body{padding:16px 20px;min-width:0}
+.mod-title{font-family:var(--f-display);font-size:20px;letter-spacing:.04em;text-transform:uppercase;color:var(--white);margin-bottom:6px;line-height:1.1}
+.mod-meta{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.mod-meta span{font-family:var(--f-mono);font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--grey2);border:1px solid var(--black4);padding:3px 6px}
+.mod-desc{font-size:12px;line-height:1.75;color:var(--grey3);margin-bottom:10px;white-space:pre-wrap;max-height:120px;overflow:auto}
+.mod-author{font-family:var(--f-mono);font-size:9px;letter-spacing:.05em;color:var(--grey2)}
+.mod-actions{display:flex;flex-direction:column;border-left:1px solid var(--black4)}
+.mod-actions button,.mod-actions a{flex:1;display:flex;align-items:center;justify-content:center;border:none;border-bottom:1px solid var(--black4);background:transparent;color:var(--grey3);font-family:var(--f-mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;text-decoration:none;padding:10px;transition:all .2s}
+.mod-actions > *:last-child{border-bottom:none}
+.mod-actions .approve{color:var(--green-ok)}
+.mod-actions .approve:hover{background:var(--green-solid);color:#fff}
+.mod-actions .reject{color:var(--red)}
+.mod-actions .reject:hover{background:var(--red-solid);color:#fff}
+.mod-actions .view:hover{background:rgba(255,255,255,.08);color:var(--white)}
+.rejection{font-size:11px;line-height:1.6;color:var(--red);border-left:2px solid var(--red);padding-left:10px;margin:8px 0}
+.reports-list{display:flex;flex-direction:column;gap:8px}
+.report-card{border:1px solid var(--black4);background:var(--black);padding:18px 20px}
+.report-top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+.report-reason{font-family:var(--f-display);font-size:18px;letter-spacing:.04em;text-transform:uppercase;color:var(--red)}
+.report-date{font-family:var(--f-mono);font-size:9px;color:var(--grey2)}
+.report-meta{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.04em;color:var(--grey3);line-height:1.8;margin-bottom:8px}
+.report-quote{font-size:12px;line-height:1.7;color:var(--grey3);background:var(--black2);border:1px solid var(--black4);padding:10px 12px;margin:8px 0;white-space:pre-wrap}
+.report-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.report-resolved{font-family:var(--f-mono);font-size:9px;color:var(--green-ok)}
+.admin-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.admin-toolbar input{flex:1;min-width:200px;background:var(--black2);border:1px solid var(--black4);padding:10px 12px;color:var(--white);font-family:var(--f-body);font-size:12px;outline:none}
+.admin-toolbar input:focus{border-color:var(--gold)}
+.users-table{width:100%;border-collapse:collapse;background:var(--black)}
+.users-table th{font-family:var(--f-mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--grey2);text-align:left;padding:10px 12px;border:1px solid var(--black4);background:var(--black2)}
+.users-table td{padding:10px 12px;border:1px solid var(--black4);font-size:11.5px;color:var(--grey3);vertical-align:middle}
+.users-table td .u-pseudo{color:var(--white);font-weight:500}
+.users-table td .u-email{font-family:var(--f-mono);font-size:9px;color:var(--grey2);display:block}
+.users-table tr.banned{opacity:.65}
+.admin-pager{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:16px;font-family:var(--f-mono);font-size:10px;color:var(--grey2)}
+.admin-denied{max-width:420px;margin:80px auto;text-align:center}
+.admin-denied h1{font-family:var(--f-display);font-size:44px;text-transform:uppercase;margin-bottom:12px}
+@media(max-width:1100px){.admin-stats{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:780px){
+  .admin-stats{grid-template-columns:repeat(2,1fr)}
+  .mod-item{grid-template-columns:1fr}
+  .mod-img{height:190px}
+  .mod-actions{flex-direction:row;border-left:none;border-top:1px solid var(--black4)}
+  .mod-actions > *{border-bottom:none;border-right:1px solid var(--black4)}
+  .users-table .hide-sm{display:none}
+}
+</style>
+</head>
+<body>
+<div id="nav-root"></div>
+
+<div class="page-wide" id="admin-app" hidden>
+  <div class="admin-head">
+    <div>
+      <span class="mod-badge" id="role-badge">Modération</span>
+      <h1>Console de modération</h1>
+      <p>Validez ou refusez les annonces, traitez les signalements et gérez les comptes. Les annonces approuvées sont visibles publiquement.</p>
+    </div>
+    <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh"><span>↻ Rafraîchir</span></button>
+  </div>
+
+  <div class="admin-stats" id="admin-stats"></div>
+
+  <div class="admin-tabs" id="admin-tabs">
+    <button type="button" class="admin-tab active" data-tab="pending">En attente <span class="count" data-count="pending"></span></button>
+    <button type="button" class="admin-tab" data-tab="approved">Publiées <span class="count" data-count="approved"></span></button>
+    <button type="button" class="admin-tab" data-tab="rejected">Refusées <span class="count" data-count="rejected"></span></button>
+    <button type="button" class="admin-tab" data-tab="reports">Signalements <span class="count" data-count="openReports"></span></button>
+    <button type="button" class="admin-tab" data-tab="users">Membres <span class="count" data-count="users"></span></button>
+  </div>
+
+  <div id="tab-content"></div>
+</div>
+
+<div class="page-wide admin-denied" id="admin-denied" hidden>
+  <div class="mod-badge">Accès restreint</div>
+  <h1>Accès refusé</h1>
+  <p class="form-sub">Cette page est réservée à l’équipe de modération.</p>
+  <a href="index.html" class="btn btn-primary"><span>Retour à l’accueil</span></a>
+</div>
+
+<div id="footer-root"></div>
+<script src="api.js"></script>
+<script src="shared.js"></script>
+<script>
+document.getElementById('nav-root').innerHTML = buildNavHTML({ activePage: '' });
+document.getElementById('footer-root').innerHTML = buildFooterHTML();
+initShared();
+
+const adminState = { tab: 'pending', page: 1, pages: 1, stats: null, loading: false };
+let currentUser = null;
+
+const REASON_LABELS = {
+  contenu_illegal: 'Contenu illégal',
+  mineur: 'Personne mineure',
+  arnaque: 'Arnaque / fraude',
+  harcelement: 'Harcèlement',
+  spam: 'Spam / publicité',
+  autre: 'Autre',
+};
+
+function statCard(value, label) {
+  return `<div class="admin-stat"><b>${esc(value ?? '—')}</b><span>${esc(label)}</span></div>`;
+}
+
+async function loadStats() {
+  const stats = await API.adminStats();
+  adminState.stats = stats;
+  document.getElementById('admin-stats').innerHTML = [
+    statCard(stats.pending, 'En attente'),
+    statCard(stats.approved, 'Publiées'),
+    statCard(stats.rejected, 'Refusées'),
+    statCard(stats.openReports, 'Signalements'),
+    statCard(stats.users, 'Membres'),
+    statCard(stats.premium, 'Premium actifs'),
+  ].join('');
+  document.querySelectorAll('[data-count]').forEach((el) => {
+    el.textContent = stats[el.dataset.count] ?? '';
+  });
+}
+
+function switchTab(tab) {
+  adminState.tab = tab;
+  adminState.page = 1;
+  document.querySelectorAll('.admin-tab').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+  loadTab();
+}
+document.querySelectorAll('.admin-tab').forEach((btn) => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+document.getElementById('btn-refresh').addEventListener('click', () => refreshAll());
+
+async function refreshAll() {
+  try {
+    await loadStats();
+  } catch (err) {
+    showToast(err.message || 'Statistiques indisponibles', 'error');
+  }
+  await loadTab();
+}
+
+async function loadTab() {
+  if (adminState.loading) return;
+  const content = document.getElementById('tab-content');
+  adminState.loading = true;
+  content.innerHTML = renderEmptyState('Chargement…');
+
+  try {
+    if (adminState.tab === 'users') await renderUsers();
+    else if (adminState.tab === 'reports') await renderReports();
+    else await renderAnnoncesTab(adminState.tab);
+  } catch (err) {
+    content.innerHTML = renderEmptyState(err.message || 'Erreur de chargement');
+  } finally {
+    adminState.loading = false;
+  }
+}
+
+async function renderAnnoncesTab(status) {
+  const content = document.getElementById('tab-content');
+  const data = await API.adminAnnonces(status, adminState.page);
+  adminState.pages = data.pagination.pages || 1;
+
+  if (!data.annonces.length) {
+    content.innerHTML = renderEmptyState(
+      status === 'pending'
+        ? 'Aucune annonce en attente. Tout est à jour.'
+        : 'Aucune annonce dans cette catégorie.'
+    );
+    return;
+  }
+
+  content.innerHTML = data.annonces.map((a) => {
+    const photo = (a.photos && a.photos[0]) || a.image || '';
+    return `
+    <div class="mod-item">
+      <div class="mod-img">${photo ? `<img src="${esc(photo)}" alt="${esc(a.title)}" loading="lazy"/>` : '✦'}</div>
+      <div class="mod-body">
+        <div class="mod-title">${esc(a.title)}</div>
+        <div class="mod-meta">
+          <span>${esc(a.pseudo)}${a.age ? ` · ${esc(a.age)} ans` : ''}</span>
+          <span>${esc(a.city)}</span>
+          <span>${esc(a.category)}</span>
+          <span>${esc(a.gender)}</span>
+          <span>${esc(a.intention)}</span>
+          ${a.reportCount ? `<span style="color:var(--red);border-color:var(--red)">⚑ ${a.reportCount} signalement${a.reportCount > 1 ? 's' : ''}</span>` : ''}
+        </div>
+        <div class="mod-desc">${esc(a.desc)}</div>
+        ${a.status === 'rejected' && a.rejectionReason ? `<div class="rejection">Motif : ${esc(a.rejectionReason)}</div>` : ''}
+        <div class="mod-author">✉ ${esc(a.authorEmail || '—')} · soumis le ${esc(formatDate(a.createdAt))}</div>
+      </div>
+      <div class="mod-actions">
+        <a class="view" href="product.html?id=${encodeURIComponent(a.id)}" target="_blank" rel="noopener">Voir</a>
+        ${a.status !== 'approved' ? `<button type="button" class="approve" data-approve="${esc(a.id)}">✓ Approuver</button>` : ''}
+        ${a.status !== 'rejected' ? `<button type="button" class="reject" data-reject="${esc(a.id)}">✕ Refuser</button>` : ''}
+      </div>
+    </div>`;
+  }).join('') + (adminState.pages > 1 ? pagerHTML() : '');
+
+  bindAnnonceActions();
+  bindPager(content, () => renderAnnoncesTab(status));
+}
+
+function pagerHTML() {
+  return `<div class="admin-pager">
+    <button type="button" class="btn btn-sm btn-secondary" data-page="prev" ${adminState.page <= 1 ? 'disabled' : ''}><span>← Précédent</span></button>
+    <span>Page ${adminState.page} / ${adminState.pages}</span>
+    <button type="button" class="btn btn-sm btn-secondary" data-page="next" ${adminState.page >= adminState.pages ? 'disabled' : ''}><span>Suivant →</span></button>
+  </div>`;
+}
+
+function bindPager(container, reload) {
+  container.querySelectorAll('[data-page]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (btn.dataset.page === 'prev' && adminState.page > 1) adminState.page -= 1;
+      if (btn.dataset.page === 'next' && adminState.page < adminState.pages) adminState.page += 1;
+      reload();
+    });
+  });
+}
+
+function bindAnnonceActions() {
+  document.querySelectorAll('[data-approve]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      try {
+        await API.adminApprove(btn.dataset.approve);
+        showToast('Annonce approuvée');
+        await refreshAll();
+      } catch (err) {
+        showToast(err.message || 'Action impossible', 'error');
+        btn.disabled = false;
+      }
+    });
+  });
+  document.querySelectorAll('[data-reject]').forEach((btn) => {
+    btn.addEventListener('click', () => rejectAnnonce(btn.dataset.reject));
+  });
+}
+
+function rejectAnnonce(id) {
+  const { body, close } = modalShell('Refuser l’annonce');
+  body.innerHTML = `
+    <form class="modal-form">
+      <p class="form-sub" style="margin:0 0 14px">Le motif est communiqué à l’auteur. Il pourra corriger son annonce puis la soumettre à nouveau.</p>
+      <div class="field">
+        <label>Motif du refus</label>
+        <select name="preset" required>
+          <option value="">Choisir…</option>
+          <option>Photos non conformes ou insuffisantes</option>
+          <option>Contenu illégal ou interdit</option>
+          <option>Suspect de mineur — refus immédiat</option>
+          <option>Coordonnées personnelles dans le texte</option>
+          <option>Description trop vague / spam</option>
+          <option value="custom">Autre motif…</option>
+        </select>
+      </div>
+      <div class="field" id="custom-reason" hidden>
+        <label>Précisez le motif</label>
+        <textarea name="custom" maxlength="300" placeholder="Motif visible par l’auteur…"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" id="reject-cancel"><span>Annuler</span></button>
+        <button type="submit" class="btn btn-danger"><span>Refuser l’annonce</span></button>
+      </div>
+    </form>`;
+
+  const form = body.querySelector('form');
+  form.preset.addEventListener('change', () => {
+    form.querySelector('#custom-reason').hidden = form.preset.value !== 'custom';
+  });
+  body.querySelector('#reject-cancel').addEventListener('click', close);
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const reason = form.preset.value === 'custom' ? form.custom.value.trim() : form.preset.value;
+    if (!reason) return showToast('Choisissez un motif', 'error');
+    const button = form.querySelector('button[type="submit"]');
+    button.disabled = true;
+    try {
+      await API.adminReject(id, reason);
+      close();
+      showToast('Annonce refusée');
+      await refreshAll();
+    } catch (err) {
+      showToast(err.message || 'Action impossible', 'error');
+      button.disabled = false;
+    }
+  });
+}
+
+async function renderReports() {
+  const content = document.getElementById('tab-content');
+  const { reports } = await API.adminReports('open');
+  if (!reports.length) {
+    content.innerHTML = renderEmptyState('Aucun signalement ouvert. Rien à traiter.');
+    return;
+  }
+
+  content.innerHTML = `<div class="reports-list">${reports.map((r) => `
+    <div class="report-card">
+      <div class="report-top">
+        <span class="report-reason">⚑ ${esc(r.reasonLabel || REASON_LABELS[r.reason] || r.reason)}</span>
+        <span class="report-date">${esc(formatDate(r.createdAt))}</span>
+      </div>
+      <div class="report-meta">
+        Cible : ${r.targetType === 'comment' ? 'commentaire' : 'annonce'}
+        ${r.annonceTitle ? ` « ${esc(r.annonceTitle)} »` : ''}
+        ${r.annonceAuthor ? ` de ${esc(r.annonceAuthor)}` : ''}
+        ${r.commentAuthor ? ` — commentaire de ${esc(r.commentAuthor)}` : ''}<br>
+        Signalé par ${esc(r.reporter.pseudo)} (${esc(r.reporter.email)})
+      </div>
+      ${r.commentContent ? `<div class="report-quote">${esc(r.commentContent)}</div>` : ''}
+      ${r.details ? `<div class="report-quote">Détails : ${esc(r.details)}</div>` : ''}
+      <div class="report-actions">
+        ${r.annonceId ? `<a class="btn btn-sm btn-secondary" href="product.html?id=${encodeURIComponent(r.annonceId)}" target="_blank" rel="noopener"><span>Voir l’annonce</span></a>` : ''}
+        ${r.commentId ? `<button type="button" class="btn btn-sm btn-danger" data-delete-comment="${esc(r.commentId)}" data-annonce="${esc(r.annonceId)}"><span>Supprimer le commentaire</span></button>` : ''}
+        <button type="button" class="btn btn-sm btn-danger" data-resolve="${esc(r.id)}" data-action="resolved"><span>Marquer traité</span></button>
+        <button type="button" class="btn btn-sm btn-secondary" data-resolve="${esc(r.id)}" data-action="dismissed"><span>Classer sans suite</span></button>
+      </div>
+    </div>`).join('')}</div>`;
+
+  content.querySelectorAll('[data-resolve]').forEach((btn) => {
+    btn.addEventListener('click', () => resolveReport(btn.dataset.resolve, btn.dataset.action));
+  });
+  content.querySelectorAll('[data-delete-comment]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const ok = await confirmDialog('Supprimer définitivement ce commentaire signalé ?', {
+        title: 'Supprimer le commentaire',
+        confirmLabel: 'Supprimer',
+        danger: true,
+      });
+      if (!ok) return;
+      btn.disabled = true;
+      try {
+        await API.deleteComment(btn.dataset.annonce, btn.dataset.deleteComment);
+        showToast('Commentaire supprimé');
+        await refreshAll();
+      } catch (err) {
+        showToast(err.message || 'Suppression impossible', 'error');
+        btn.disabled = false;
+      }
+    });
+  });
+}
+
+function resolveReport(id, action) {
+  const title = action === 'resolved' ? 'Marquer le signalement traité' : 'Classer sans suite';
+  const { body, close } = modalShell(title);
+  body.innerHTML = `
+    <form class="modal-form">
+      <div class="field">
+        <label>Note interne (optionnel)</label>
+        <textarea name="note" maxlength="500" placeholder="Décision prise, avertissement envoyé…"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" id="resolve-cancel"><span>Annuler</span></button>
+        <button type="submit" class="btn ${action === 'resolved' ? 'btn-danger' : 'btn-primary'}"><span>${action === 'resolved' ? 'Marquer traité' : 'Classer sans suite'}</span></button>
+      </div>
+    </form>`;
+  body.querySelector('#resolve-cancel').addEventListener('click', close);
+  body.querySelector('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const note = e.target.note.value.trim();
+    const button = e.target.querySelector('button[type="submit"]');
+    button.disabled = true;
+    try {
+      await API.adminResolveReport(id, action, note);
+      close();
+      showToast('Signalement mis à jour');
+      await refreshAll();
+    } catch (err) {
+      showToast(err.message || 'Action impossible', 'error');
+      button.disabled = false;
+    }
+  });
+}
+
+async function renderUsers() {
+  const content = document.getElementById('tab-content');
+  content.innerHTML = `
+    <div class="admin-toolbar">
+      <input type="search" id="user-search" placeholder="Rechercher par pseudo ou email…" value="${esc(adminState.userQuery || '')}"/>
+      <button type="button" class="btn btn-secondary btn-sm" id="user-search-btn"><span>Rechercher</span></button>
+    </div>
+    <div id="users-table-wrap">${renderEmptyState('Chargement…')}</div>`;
+
+  document.getElementById('user-search-btn').addEventListener('click', () => {
+    adminState.userQuery = document.getElementById('user-search').value.trim();
+    adminState.page = 1;
+    renderUsers();
+  });
+  document.getElementById('user-search').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      adminState.userQuery = e.target.value.trim();
+      adminState.page = 1;
+      renderUsers();
+    }
+  });
+
+  const data = await API.adminUsers(adminState.userQuery || '', adminState.page);
+  adminState.pages = data.pagination.pages || 1;
+  const wrap = document.getElementById('users-table-wrap');
+
+  if (!data.users.length) {
+    wrap.innerHTML = renderEmptyState('Aucun membre trouvé.');
+    return;
+  }
+
+  wrap.innerHTML = `
+    <div style="overflow-x:auto">
+    <table class="users-table">
+      <thead><tr>
+        <th>Membre</th><th>Rôle</th><th>Premium</th><th class="hide-sm">Annonces</th><th class="hide-sm">Inscrit</th><th>Statut</th><th></th>
+      </tr></thead>
+      <tbody>
+        ${data.users.map((u) => `
+          <tr class="${u.banned ? 'banned' : ''}">
+            <td><span class="u-pseudo">${esc(u.pseudo)}</span><span class="u-email">${esc(u.email)}</span></td>
+            <td>${esc(u.role)}</td>
+            <td>${u.hasPremium ? `<span class="status-pill approved">actif</span>` : '—'}</td>
+            <td class="hide-sm">${u.adCount}</td>
+            <td class="hide-sm">${esc(formatDate(u.createdAt))}</td>
+            <td>${u.banned ? '<span class="status-pill banned">suspendu</span>' : '<span class="status-pill approved">actif</span>'}</td>
+            <td>${currentUser.role === 'admin' && u.role !== 'admin' && u.id !== currentUser.id
+              ? `<button type="button" class="btn btn-sm ${u.banned ? 'btn-secondary' : 'btn-danger'}" data-ban="${esc(u.id)}" data-banned="${u.banned ? '1' : '0'}"><span>${u.banned ? 'Réactiver' : 'Suspendre'}</span></button>`
+              : '—'}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+    </div>
+    ${adminState.pages > 1 ? pagerHTML() : ''}`;
+
+  wrap.querySelectorAll('[data-ban]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const willBan = btn.dataset.banned !== '1';
+      const ok = await confirmDialog(
+        willBan
+          ? 'Suspendre ce membre ? Il ne pourra plus se connecter ni commenter.'
+          : 'Réactiver ce membre ?',
+        { title: willBan ? 'Suspendre le membre' : 'Réactiver le membre', confirmLabel: willBan ? 'Suspendre' : 'Réactiver', danger: willBan }
+      );
+      if (!ok) return;
+      btn.disabled = true;
+      try {
+        await API.adminBanUser(btn.dataset.ban, willBan);
+        showToast(willBan ? 'Membre suspendu' : 'Membre réactivé');
+        await refreshAll();
+      } catch (err) {
+        showToast(err.message || 'Action impossible', 'error');
+        btn.disabled = false;
+      }
+    });
+  });
+  bindPager(wrap, () => renderUsers());
+}
+
+async function initAdmin() {
+  await AUTH.refresh();
+  AUTH.updateNavLabel();
+  currentUser = AUTH.currentUser();
+
+  if (!currentUser || !AUTH.isStaff()) {
+    document.getElementById('admin-denied').hidden = false;
+    setTimeout(() => { window.location.href = 'index.html'; }, 1800);
+    return;
+  }
+
+  document.getElementById('admin-app').hidden = false;
+  document.getElementById('role-badge').textContent =
+    currentUser.role === 'admin' ? '⚙ Administrateur' : '⚑ Modérateur';
+
+  await refreshAll();
+}
+
+initAdmin();
+</script>
+</body>
+</html>

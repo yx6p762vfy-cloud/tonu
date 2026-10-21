@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<link rel="icon" type="image/jpeg" href="TonuIcon.jpeg"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>tonú Privé — Mon compte</title>
+<link rel="stylesheet" href="shared.css"/>
+<style>
+.auth-wrap{max-width:480px;margin:0 auto;padding:48px 20px 80px}
+.auth-wrap .form-card{padding:30px 26px}
+.auth-wrap h1{font-size:clamp(32px,7vw,42px)}
+.auth-form .form-check{margin:2px 0 18px}
+.auth-links{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:16px;font-family:var(--f-mono);font-size:9.5px;letter-spacing:.06em;color:var(--grey2)}
+.auth-links a{color:var(--grey2);text-decoration:none}
+.auth-links a:hover{color:var(--gold2)}
+.dash-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+.dash-head h1{font-family:var(--f-display);font-size:clamp(38px,6vw,54px);letter-spacing:.04em;text-transform:uppercase;line-height:.95;margin:8px 0 6px}
+.dash-head .form-sub{margin:0}
+.dash-badges{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+.dash-card{background:var(--black);border:1px solid var(--black4);padding:26px 24px}
+.dash-card h2{font-family:var(--f-display);font-size:24px;letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px}
+.dash-card .card-sub{font-size:11.5px;line-height:1.7;color:var(--grey2);margin-bottom:18px}
+.dash-card .field input{width:100%}
+.dash-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.meta-list{display:flex;flex-direction:column;gap:8px;margin:0 0 18px;padding:0;list-style:none}
+.meta-list li{display:flex;justify-content:space-between;gap:12px;font-family:var(--f-mono);font-size:10px;letter-spacing:.06em;color:var(--grey3);padding-bottom:8px;border-bottom:1px solid var(--black4)}
+.meta-list li span:last-child{color:var(--white);text-align:right;word-break:break-word}
+.premium-state{font-family:var(--f-mono);font-size:10px;letter-spacing:.08em;color:var(--grey3);line-height:1.8;margin-bottom:16px}
+.premium-state strong{color:var(--gold3)}
+.danger-card{border-color:rgba(200,60,60,.4)}
+.danger-card h2{color:var(--red)}
+.dash-full{grid-column:1/-1}
+.quick-links{display:flex;gap:8px;flex-wrap:wrap}
+@media(max-width:860px){
+  .dash-grid{grid-template-columns:1fr}
+  .auth-wrap{padding:28px 14px 60px}
+}
+</style>
+</head>
+<body>
+<div id="nav-root"></div>
+
+<!-- ══ LOGGED OUT ══ -->
+<div class="auth-wrap" id="logged-out-view" hidden>
+  <div class="form-card">
+    <div class="form-tabs">
+      <button type="button" class="form-tab active" id="tab-login">Connexion</button>
+      <button type="button" class="form-tab" id="tab-register">Inscription</button>
+    </div>
+
+    <div id="panel-login">
+      <h1>Connexion</h1>
+      <p class="form-sub">Retrouvez vos annonces, vos commentaires et votre statut Premium.</p>
+      <form class="auth-form" id="login-form" novalidate>
+        <div class="field">
+          <label for="login-email">Email</label>
+          <input type="email" id="login-email" required autocomplete="email" inputmode="email"/>
+        </div>
+        <div class="field">
+          <label for="login-password">Mot de passe</label>
+          <input type="password" id="login-password" required autocomplete="current-password"/>
+        </div>
+        <button class="btn btn-primary btn-full btn-lg" type="submit" id="login-submit"><span>Se connecter</span></button>
+      </form>
+      <div class="auth-links">
+        <a href="faq.html">Besoin d’aide ?</a>
+        <a href="product.html">Parcourir sans compte →</a>
+      </div>
+    </div>
+
+    <div id="panel-register" hidden>
+      <h1>Créer un compte</h1>
+      <p class="form-sub">Gratuit. Réservé aux personnes majeures (18+). Nécessaire pour commenter et publier.</p>
+      <form class="auth-form" id="register-form" novalidate>
+        <div class="field">
+          <label for="reg-pseudo">Pseudo public</label>
+          <input type="text" id="reg-pseudo" required minlength="3" maxlength="32" autocomplete="nickname" placeholder="Visible sur vos annonces et commentaires"/>
+        </div>
+        <div class="field">
+          <label for="reg-age">Âge</label>
+          <input type="number" id="reg-age" required min="18" max="99" inputmode="numeric" placeholder="18 minimum"/>
+        </div>
+        <div class="field">
+          <label for="reg-email">Email</label>
+          <input type="email" id="reg-email" required autocomplete="email" inputmode="email"/>
+        </div>
+        <div class="field">
+          <label for="reg-password">Mot de passe</label>
+          <input type="password" id="reg-password" required minlength="8" autocomplete="new-password"/>
+          <span class="photo-hint" style="font-family:var(--f-mono);font-size:9px;color:var(--grey2)">8 caractères minimum</span>
+        </div>
+        <label class="form-check" style="display:flex;gap:10px;align-items:flex-start;font-size:11.5px;color:var(--grey3);line-height:1.6">
+          <input type="checkbox" id="reg-terms" required style="margin-top:3px"/>
+          <span>J’ai 18 ans ou plus et j’accepte les <a href="cgu.html" target="_blank" rel="noopener">CGU</a> ainsi que la <a href="confidentialite.html" target="_blank" rel="noopener">politique de confidentialité</a>.</span>
+        </label>
+        <button class="btn btn-primary btn-full btn-lg" type="submit" id="register-submit" style="margin-top:16px"><span>Créer mon compte</span></button>
+      </form>
+      <div class="auth-links">
+        <a href="securite.html">Conseils de sécurité</a>
+        <a href="product.html">Parcourir sans compte →</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ LOGGED IN ══ -->
+<div class="page-wide" id="logged-in-view" hidden>
+  <div class="dash-head">
+    <div>
+      <div class="dash-badges">
+        <span class="user-badge" id="user-premium-badge" style="margin:0">Membre</span>
+        <span class="status-pill" id="user-role-badge" hidden></span>
+      </div>
+      <h1 id="dash-pseudo">Mon espace</h1>
+      <p class="form-sub" id="dash-email"></p>
+    </div>
+    <div class="quick-links">
+      <a href="publier.html" class="btn btn-primary btn-sm"><span>Mes annonces</span></a>
+      <button type="button" class="btn btn-secondary btn-sm" id="btn-logout"><span>Déconnexion</span></button>
+    </div>
+  </div>
+
+  <div class="dash-grid">
+    <!-- Profil -->
+    <section class="dash-card">
+      <h2>Profil public</h2>
+      <p class="card-sub">Votre pseudo et votre âge apparaissent sur vos annonces et commentaires. L’email reste privé.</p>
+      <form id="profile-form" novalidate>
+        <div class="field">
+          <label for="prof-pseudo">Pseudo public</label>
+          <input type="text" id="prof-pseudo" required minlength="3" maxlength="32"/>
+        </div>
+        <div class="field">
+          <label for="prof-age">Âge</label>
+          <input type="number" id="prof-age" required min="18" max="99" inputmode="numeric"/>
+        </div>
+        <ul class="meta-list">
+          <li><span>Email</span><span id="prof-email"></span></li>
+          <li><span>Membre depuis</span><span id="prof-created"></span></li>
+        </ul>
+        <div class="dash-actions">
+          <button type="submit" class="btn btn-primary btn-sm" id="profile-submit"><span>Enregistrer</span></button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Abonnement -->
+    <section class="dash-card">
+      <h2>Abonnement</h2>
+      <p class="card-sub">La publication d’annonces avec photos nécessite le Pass Premium. Le paiement est traité par Stripe.</p>
+      <div class="premium-state" id="premium-state"></div>
+      <div class="dash-actions">
+        <a href="premium.html" class="btn btn-primary btn-sm" id="btn-subscribe"><span>Activer le Pass</span></a>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-portal" hidden><span>Gérer l’abonnement</span></button>
+      </div>
+      <p class="photo-hint" style="margin-top:14px;font-family:var(--f-mono);font-size:9px;color:var(--grey2);line-height:1.7">
+        Annulation et factures disponibles depuis le portail Stripe. L’accès reste actif jusqu’à la fin de la période payée.
+      </p>
+    </section>
+
+    <!-- Mot de passe -->
+    <section class="dash-card">
+      <h2>Mot de passe</h2>
+      <p class="card-sub">Choisissez un mot de passe unique d’au moins 8 caractères.</p>
+      <form id="password-form" novalidate>
+        <div class="field">
+          <label for="pwd-current">Mot de passe actuel</label>
+          <input type="password" id="pwd-current" required autocomplete="current-password"/>
+        </div>
+        <div class="field">
+          <label for="pwd-new">Nouveau mot de passe</label>
+          <input type="password" id="pwd-new" required minlength="8" autocomplete="new-password"/>
+        </div>
+        <div class="dash-actions">
+          <button type="submit" class="btn btn-secondary btn-sm" id="password-submit"><span>Modifier</span></button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Données -->
+    <section class="dash-card">
+      <h2>Mes données</h2>
+      <p class="card-sub">Exportez une copie de votre compte (profil, annonces, commentaires) au format JSON.</p>
+      <div class="dash-actions">
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-export"><span>Télécharger mes données</span></button>
+      </div>
+      <ul class="meta-list" style="margin-top:20px">
+        <li><span>Âge minimum</span><span>18 ans</span></li>
+        <li><span>Politique</span><span><a href="confidentialite.html" style="color:var(--gold3)">Confidentialité</a></span></li>
+        <li><span>Support</span><span><a href="contact.html" style="color:var(--gold3)">Contact</a></span></li>
+      </ul>
+    </section>
+
+    <!-- Suppression -->
+    <section class="dash-card danger-card dash-full">
+      <h2>Supprimer mon compte</h2>
+      <p class="card-sub">La suppression est définitive : profil, annonces, photos et commentaires sont effacés. L’abonnement Stripe est annulé s’il est actif.</p>
+      <div class="dash-actions">
+        <button type="button" class="btn btn-danger btn-sm" id="btn-delete-account"><span>Supprimer définitivement</span></button>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div id="footer-root"></div>
+<script src="api.js"></script>
+<script src="shared.js"></script>
+<script>
+document.getElementById('nav-root').innerHTML = buildNavHTML({ activePage: 'compte' });
+document.getElementById('footer-root').innerHTML = buildFooterHTML();
+initShared();
+
+const params = new URLSearchParams(location.search);
+const redirectTarget = params.get('redirect') ? safeRedirect(params.get('redirect')) : '';
+const canRedirectBack = redirectTarget && !/^compte\.html/i.test(redirectTarget);
+
+function showTab(which) {
+  document.getElementById('panel-login').hidden = which !== 'login';
+  document.getElementById('panel-register').hidden = which !== 'register';
+  document.getElementById('tab-login').classList.toggle('active', which === 'login');
+  document.getElementById('tab-register').classList.toggle('active', which === 'register');
+}
+document.getElementById('tab-login').addEventListener('click', () => showTab('login'));
+document.getElementById('tab-register').addEventListener('click', () => showTab('register'));
+
+function goAfterAuth() {
+  if (canRedirectBack) {
+    setTimeout(() => { window.location.href = redirectTarget; }, 450);
+  } else {
+    renderDashboard();
+  }
+}
+
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const button = document.getElementById('login-submit');
+  button.disabled = true;
+  const r = await AUTH.login(
+    document.getElementById('login-email').value.trim(),
+    document.getElementById('login-password').value
+  );
+  button.disabled = false;
+  if (!r.ok) return showToast(r.msg, 'error');
+  showToast('Connecté');
+  goAfterAuth();
+});
+
+document.getElementById('register-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!document.getElementById('reg-terms').checked) {
+    return showToast('Vous devez accepter les CGU et confirmer votre majorité', 'error');
+  }
+  const button = document.getElementById('register-submit');
+  button.disabled = true;
+  const r = await AUTH.register({
+    email: document.getElementById('reg-email').value.trim(),
+    password: document.getElementById('reg-password').value,
+    pseudo: document.getElementById('reg-pseudo').value.trim(),
+    age: document.getElementById('reg-age').value,
+    acceptTerms: true,
+  });
+  button.disabled = false;
+  if (!r.ok) return showToast(r.msg, 'error');
+  showToast('Compte créé — bienvenue');
+  goAfterAuth();
+});
+
+document.getElementById('btn-logout').addEventListener('click', () => {
+  AUTH.logout();
+  showToast('Déconnecté');
+  window.location.href = 'index.html';
+});
+
+async function renderDashboard() {
+  const u = AUTH.currentUser();
+  const loggedOut = document.getElementById('logged-out-view');
+  const loggedIn = document.getElementById('logged-in-view');
+
+  if (!u) {
+    loggedOut.hidden = false;
+    loggedIn.hidden = true;
+    return;
+  }
+
+  loggedOut.hidden = true;
+  loggedIn.hidden = false;
+
+  document.getElementById('dash-pseudo').textContent = u.pseudo;
+  document.getElementById('dash-email').textContent = u.email;
+  document.getElementById('prof-pseudo').value = u.pseudo;
+  document.getElementById('prof-age').value = u.age || '';
+  document.getElementById('prof-email').textContent = u.email;
+  document.getElementById('prof-created').textContent = formatDate(u.createdAt) || '—';
+
+  const badge = document.getElementById('user-premium-badge');
+  badge.textContent = u.hasPremium ? 'Premium actif' : 'Compte gratuit';
+  badge.style.borderColor = u.hasPremium ? 'var(--gold)' : 'var(--black4)';
+  badge.style.color = u.hasPremium ? 'var(--gold3)' : 'var(--grey3)';
+
+  const roleBadge = document.getElementById('user-role-badge');
+  if (u.role === 'admin' || u.role === 'moderator') {
+    roleBadge.hidden = false;
+    roleBadge.textContent = u.role === 'admin' ? 'Administrateur' : 'Modérateur';
+    roleBadge.className = `status-pill ${u.role === 'admin' ? 'approved' : 'pending'}`;
+  } else {
+    roleBadge.hidden = true;
+  }
+
+  const state = document.getElementById('premium-state');
+  if (u.hasPremium) {
+    state.innerHTML = `<strong>Premium actif</strong><br>Valide jusqu’au ${esc(new Date(u.premiumUntil).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }))}.`;
+    document.getElementById('btn-subscribe').hidden = true;
+  } else {
+    state.innerHTML = 'Aucun abonnement actif.<br>Consultation et commentaires gratuits.';
+    document.getElementById('btn-subscribe').hidden = false;
+  }
+  document.getElementById('btn-portal').hidden = !u.stripeCustomerId;
+
+  try {
+    const cfg = await API.stripeConfig();
+    const subscribeBtn = document.getElementById('btn-subscribe');
+    if (cfg.priceLabel && !u.hasPremium) {
+      subscribeBtn.querySelector('span').textContent = `Activer — ${cfg.priceLabel} / ${cfg.intervalLabel || 'mois'}`;
+    }
+  } catch { /* prix indisponible */ }
+
+  AUTH.updateNavLabel();
+}
+
+document.getElementById('profile-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const u = AUTH.currentUser();
+  const pseudo = document.getElementById('prof-pseudo').value.trim();
+  const age = Number(document.getElementById('prof-age').value);
+
+  const payload = {};
+  if (pseudo !== u.pseudo) payload.pseudo = pseudo;
+  if (age !== u.age) payload.age = age;
+  if (!Object.keys(payload).length) return showToast('Aucune modification');
+
+  const button = document.getElementById('profile-submit');
+  button.disabled = true;
+  try {
+    await AUTH.updateProfile(payload);
+    showToast('Profil mis à jour');
+    renderDashboard();
+  } catch (err) {
+    showToast(err.message || 'Mise à jour impossible', 'error');
+  } finally {
+    button.disabled = false;
+  }
+});
+
+document.getElementById('password-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const current = document.getElementById('pwd-current').value;
+  const next = document.getElementById('pwd-new').value;
+  if (next.length < 8) return showToast('Le nouveau mot de passe doit faire 8 caractères minimum', 'error');
+
+  const button = document.getElementById('password-submit');
+  button.disabled = true;
+  try {
+    await API.changePassword({ currentPassword: current, newPassword: next });
+    document.getElementById('password-form').reset();
+    showToast('Mot de passe modifié');
+  } catch (err) {
+    showToast(err.message || 'Modification impossible', 'error');
+  } finally {
+    button.disabled = false;
+  }
+});
+
+document.getElementById('btn-portal').addEventListener('click', async () => {
+  const button = document.getElementById('btn-portal');
+  button.disabled = true;
+  try {
+    const { url } = await API.stripePortal();
+    window.location.href = url;
+  } catch (err) {
+    showToast(err.message || 'Portail Stripe indisponible', 'error');
+    button.disabled = false;
+  }
+});
+
+document.getElementById('btn-export').addEventListener('click', async () => {
+  const button = document.getElementById('btn-export');
+  button.disabled = true;
+  try {
+    const json = await API.exportData();
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tonu-donnees-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    showToast('Export téléchargé');
+  } catch (err) {
+    showToast(err.message || 'Export impossible', 'error');
+  } finally {
+    button.disabled = false;
+  }
+});
+
+document.getElementById('btn-delete-account').addEventListener('click', () => {
+  const { body, close } = modalShell('Supprimer mon compte');
+  body.innerHTML = `
+    <form class="modal-form">
+      <p class="notice error">Cette action est irréversible. Toutes vos annonces, photos et commentaires seront supprimés.</p>
+      <div class="field">
+        <label>Confirmez votre mot de passe</label>
+        <input type="password" name="password" required autocomplete="current-password"/>
+      </div>
+      <label class="form-check" style="display:flex;gap:10px;align-items:flex-start;font-size:11.5px;color:var(--grey3);line-height:1.6;margin-bottom:16px">
+        <input type="checkbox" name="confirm" required style="margin-top:3px"/>
+        <span>Je comprends que la suppression est définitive.</span>
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" id="delete-cancel"><span>Annuler</span></button>
+        <button type="submit" class="btn btn-danger"><span>Supprimer définitivement</span></button>
+      </div>
+    </form>`;
+
+  body.querySelector('#delete-cancel').addEventListener('click', close);
+  body.querySelector('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const button = form.querySelector('button[type="submit"]');
+    button.disabled = true;
+    try {
+      await API.deleteAccount(form.password.value);
+      AUTH.logout();
+      close();
+      showToast('Compte supprimé');
+      setTimeout(() => { window.location.href = 'index.html'; }, 700);
+    } catch (err) {
+      showToast(err.message || 'Suppression impossible', 'error');
+      button.disabled = false;
+    }
+  });
+});
+
+AUTH.refresh().then(renderDashboard);
+</script>
+</body>
+</html>

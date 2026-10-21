@@ -2,30 +2,83 @@ const express = require('express');
 const db = require('../db');
 const config = require('../config');
 const { authRequired, requireRole } = require('../middleware/auth');
-const { mapAnnonceRow } = require('../lib/serialize');
+const { mapAnnonceRow, mapUserPublic } = require('../lib/serialize');
+const validation = require('../lib/validation');
 
 const router = express.Router();
 
 router.use(authRequired, requireRole('admin', 'moderator'));
 
-function pendingList() {
+function adminAnnonceRows(where, params, limit, offset) {
   const rows = db
-    .prepare(`SELECT * FROM annonces WHERE status = 'pending' ORDER BY created_at ASC`)
-    .all();
-  return rows.map((row) => {
-    const photos = db
-      .prepare('SELECT * FROM annonce_photos WHERE annonce_id = ? ORDER BY sort_order')
-      .all(row.id);
-    const user = db.prepare('SELECT id, pseudo, age, email FROM users WHERE id = ?').get(row.user_id);
-    return {
-      ...mapAnnonceRow(row, photos, user, config.baseUrl),
-      authorEmail: user?.email,
-    };
-  });
+    .prepare(
+      `SELECT a.*, u.pseudo AS author_pseudo, u.age AS author_age, u.email AS author_email,
+              (SELECT COUNT(*) FROM comments c WHERE c.annonce_id = a.id) AS comment_count,
+              (SELECT COUNT(*) FROM reports r WHERE r.annonce_id = a.id AND r.status = 'open') AS report_count
+       FROM annonces a JOIN users u ON u.id = a.user_id
+       WHERE ${where}
+       ORDER BY a.created_at DESC
+       LIMIT ? OFFSET ?`
+    )
+    .all(...params, limit, offset);
+
+  const photosMap = new Map();
+  if (rows.length) {
+    const placeholders = rows.map(() => '?').join(',');
+    db.prepare(
+      `SELECT * FROM annonce_photos WHERE annonce_id IN (${placeholders}) ORDER BY sort_order`
+    )
+      .all(...rows.map((r) => r.id))
+      .forEach((p) => {
+        if (!photosMap.has(p.annonce_id)) photosMap.set(p.annonce_id, []);
+        photosMap.get(p.annonce_id).push(p);
+      });
+  }
+
+  return rows.map((row) => ({
+    ...mapAnnonceRow(
+      row,
+      photosMap.get(row.id) || [],
+      { id: row.user_id, pseudo: row.author_pseudo, age: row.author_age },
+      config.baseUrl,
+      { commentCount: row.comment_count }
+    ),
+    authorEmail: row.author_email,
+    reportCount: row.report_count,
+  }));
 }
 
+router.get('/stats', (_req, res) => {
+  const count = (sql) => db.prepare(sql).get().c;
+  res.json({
+    pending: count("SELECT COUNT(*) AS c FROM annonces WHERE status = 'pending'"),
+    approved: count("SELECT COUNT(*) AS c FROM annonces WHERE status = 'approved'"),
+    rejected: count("SELECT COUNT(*) AS c FROM annonces WHERE status = 'rejected'"),
+    users: count('SELECT COUNT(*) AS c FROM users'),
+    premium: count("SELECT COUNT(*) AS c FROM users WHERE julianday(premium_until) > julianday('now')"),
+    openReports: count("SELECT COUNT(*) AS c FROM reports WHERE status = 'open'"),
+    comments: count('SELECT COUNT(*) AS c FROM comments'),
+  });
+});
+
+router.get('/annonces', (req, res) => {
+  const status = String(req.query.status || 'pending');
+  if (status !== 'all' && !validation.STATUSES.includes(status)) {
+    return res.status(400).json({ error: 'Statut invalide' });
+  }
+  const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(50, Math.max(1, Number.parseInt(req.query.limit, 10) || 20));
+  const where = status === 'all' ? '1=1' : 'a.status = ?';
+  const params = status === 'all' ? [] : [status];
+  const total = db.prepare(`SELECT COUNT(*) AS c FROM annonces a WHERE ${where}`).get(...params).c;
+  res.json({
+    annonces: adminAnnonceRows(where, params, limit, (page - 1) * limit),
+    pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+  });
+});
+
 router.get('/pending', (_req, res) => {
-  res.json({ annonces: pendingList() });
+  res.json({ annonces: adminAnnonceRows("a.status = 'pending'", [], 200, 0) });
 });
 
 router.post('/annonces/:id/approve', (req, res) => {
@@ -33,19 +86,132 @@ router.post('/annonces/:id/approve', (req, res) => {
   if (!row) return res.status(404).json({ error: 'Annonce introuvable' });
   db.prepare(
     `UPDATE annonces SET status = 'approved', rejection_reason = NULL,
-     moderated_at = datetime('now'), moderated_by = ? WHERE id = ?`
-  ).run(req.user.id, req.params.id);
+     moderated_at = datetime('now'), moderated_by = ?, updated_at = datetime('now')
+     WHERE id = ?`
+  ).run(req.user.id, row.id);
   res.json({ ok: true });
 });
 
 router.post('/annonces/:id/reject', (req, res) => {
-  const reason = (req.body.reason || 'Contenu non conforme').trim();
+  const reason = validation.text(req.body.reason, 300);
+  if (reason.length < 3) return res.status(400).json({ error: 'Motif du refus requis (3 caractères min.)' });
   const row = db.prepare('SELECT id FROM annonces WHERE id = ?').get(req.params.id);
   if (!row) return res.status(404).json({ error: 'Annonce introuvable' });
   db.prepare(
     `UPDATE annonces SET status = 'rejected', rejection_reason = ?,
-     moderated_at = datetime('now'), moderated_by = ? WHERE id = ?`
-  ).run(reason, req.user.id, req.params.id);
+     moderated_at = datetime('now'), moderated_by = ?, updated_at = datetime('now')
+     WHERE id = ?`
+  ).run(reason, req.user.id, row.id);
+  res.json({ ok: true });
+});
+
+router.get('/reports', (req, res) => {
+  const status = String(req.query.status || 'open');
+  if (!['open', 'resolved', 'dismissed', 'all'].includes(status)) {
+    return res.status(400).json({ error: 'Statut invalide' });
+  }
+  const where = status === 'all' ? '1=1' : 'r.status = ?';
+  const params = status === 'all' ? [] : [status];
+
+  const rows = db
+    .prepare(
+      `SELECT r.*, reporter.pseudo AS reporter_pseudo, reporter.email AS reporter_email,
+              a.title AS annonce_title, a.user_id AS annonce_owner_id,
+              author.pseudo AS annonce_author,
+              c.content AS comment_content, c.user_id AS comment_owner_id,
+              cauthor.pseudo AS comment_author
+       FROM reports r
+       JOIN users reporter ON reporter.id = r.reporter_user_id
+       LEFT JOIN annonces a ON a.id = r.annonce_id
+       LEFT JOIN users author ON author.id = a.user_id
+       LEFT JOIN comments c ON c.id = r.comment_id
+       LEFT JOIN users cauthor ON cauthor.id = c.user_id
+       WHERE ${where}
+       ORDER BY r.created_at DESC
+       LIMIT 200`
+    )
+    .all(...params);
+
+  res.json({
+    reports: rows.map((row) => ({
+      id: row.id,
+      status: row.status,
+      reason: row.reason,
+      reasonLabel: validation.REPORT_REASONS[row.reason] || row.reason,
+      details: row.details,
+      createdAt: row.created_at,
+      resolvedAt: row.resolved_at,
+      adminNote: row.admin_note,
+      targetType: row.comment_id ? 'comment' : 'annonce',
+      annonceId: row.annonce_id,
+      annonceTitle: row.annonce_title,
+      annonceAuthor: row.annonce_author,
+      commentId: row.comment_id,
+      commentContent: row.comment_content,
+      commentAuthor: row.comment_author,
+      reporter: { pseudo: row.reporter_pseudo, email: row.reporter_email },
+    })),
+  });
+});
+
+router.post('/reports/:id/resolve', (req, res) => {
+  const action = String(req.body.action || 'resolved');
+  if (!['resolved', 'dismissed'].includes(action)) {
+    return res.status(400).json({ error: 'Action invalide' });
+  }
+  const note = validation.text(req.body.note, 500);
+  const row = db.prepare('SELECT id FROM reports WHERE id = ?').get(req.params.id);
+  if (!row) return res.status(404).json({ error: 'Signalement introuvable' });
+
+  db.prepare(
+    `UPDATE reports SET status = ?, admin_note = ?, resolved_at = datetime('now'), resolved_by = ?
+     WHERE id = ?`
+  ).run(action, note || null, req.user.id, row.id);
+  res.json({ ok: true });
+});
+
+router.get('/users', (req, res) => {
+  const q = validation.text(req.query.q, 80);
+  const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(50, Math.max(1, Number.parseInt(req.query.limit, 10) || 20));
+  const where = q ? "(u.email LIKE ? ESCAPE '\\' OR u.pseudo LIKE ? ESCAPE '\\')" : '1=1';
+  const params = q ? [`%${q}%`, `%${q}%`] : [];
+  const total = db.prepare(`SELECT COUNT(*) AS c FROM users u WHERE ${where}`).get(...params).c;
+
+  const rows = db
+    .prepare(
+      `SELECT u.*,
+              (SELECT COUNT(*) FROM annonces a WHERE a.user_id = u.id) AS ad_count,
+              (SELECT COUNT(*) FROM comments c WHERE c.user_id = u.id) AS comment_count
+       FROM users u WHERE ${where}
+       ORDER BY u.created_at DESC
+       LIMIT ? OFFSET ?`
+    )
+    .all(...params, limit, (page - 1) * limit);
+
+  res.json({
+    users: rows.map((row) => ({
+      ...mapUserPublic(row),
+      banned: !!row.banned,
+      adCount: row.ad_count,
+      commentCount: row.comment_count,
+      stripeSubscribed: !!row.stripe_subscription_id,
+    })),
+    pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+  });
+});
+
+router.post('/users/:id/ban', requireRole('admin'), (req, res) => {
+  const banned = req.body.banned === true || req.body.banned === 'true';
+  const target = db.prepare('SELECT id, role FROM users WHERE id = ?').get(req.params.id);
+  if (!target) return res.status(404).json({ error: 'Utilisateur introuvable' });
+  if (target.id === req.user.id) return res.status(400).json({ error: 'Vous ne pouvez pas vous suspendre vous-même' });
+  if (target.role === 'admin') return res.status(400).json({ error: 'Impossible de suspendre un administrateur' });
+
+  db.prepare("UPDATE users SET banned = ?, updated_at = datetime('now') WHERE id = ?").run(
+    banned ? 1 : 0,
+    target.id
+  );
   res.json({ ok: true });
 });
 

@@ -1,66 +1,111 @@
 const express = require('express');
-const path = require('path');
-const fs = require('fs');
-const multer = require('multer');
 const { randomUUID } = require('crypto');
 const db = require('../db');
 const config = require('../config');
 const { authRequired, authOptional, userHasPremium } = require('../middleware/auth');
+const { publishLimiter } = require('../middleware/limiters');
 const { mapAnnonceRow } = require('../lib/serialize');
+const validation = require('../lib/validation');
+const { upload, saveUploads, deleteFiles, multerErrorResponse } = require('../lib/images');
+const { asyncHandler } = require('../lib/http');
 
 const router = express.Router();
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, config.uploadsDir),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
-    cb(null, `${randomUUID()}${ext}`);
-  },
-});
-
-const upload = multer({
-  storage,
-  limits: { fileSize: config.maxUploadBytes, files: 3 },
-  fileFilter: (_req, file, cb) => {
-    const ok = ['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype);
-    cb(ok ? null : new Error('Format image non supporté'), ok);
-  },
-});
-
-function attachPhotosAndUser(row, baseUrl) {
-  const photos = db
-    .prepare('SELECT * FROM annonce_photos WHERE annonce_id = ? ORDER BY sort_order')
-    .all(row.id);
-  const user = db.prepare('SELECT id, pseudo, age FROM users WHERE id = ?').get(row.user_id);
-  return mapAnnonceRow(row, photos, user, baseUrl);
+function likeTerm(value) {
+  return `%${value.replace(/[\\%_]/g, '\\$&')}%`;
 }
 
-/* ── GET / — liste des annonces approuvées avec filtres ── */
-router.get('/', (_req, res) => {
-  const cat = (_req.query.cat || '').trim();
-  const city = (_req.query.city || '').trim();
-  const gender = (_req.query.gender || '').trim();
-  const page = Math.max(1, parseInt(_req.query.page) || 1);
-  const limit = Math.min(50, Math.max(1, parseInt(_req.query.limit) || 20));
-  const offset = (page - 1) * limit;
+function photosByAnnonce(ids) {
+  const map = new Map();
+  if (!ids.length) return map;
+  const placeholders = ids.map(() => '?').join(',');
+  const rows = db
+    .prepare(
+      `SELECT * FROM annonce_photos WHERE annonce_id IN (${placeholders}) ORDER BY sort_order ASC`
+    )
+    .all(...ids);
+  rows.forEach((row) => {
+    if (!map.has(row.annonce_id)) map.set(row.annonce_id, []);
+    map.get(row.annonce_id).push(row);
+  });
+  return map;
+}
 
-  // Construction dynamique de la requête
+function selectRows(where, params = []) {
+  return db
+    .prepare(
+      `SELECT a.*, u.pseudo AS author_pseudo, u.age AS author_age,
+              (SELECT COUNT(*) FROM comments c WHERE c.annonce_id = a.id) AS comment_count
+       FROM annonces a
+       JOIN users u ON u.id = a.user_id
+       WHERE ${where}`
+    )
+    .all(...params);
+}
+
+function serializeRows(rows) {
+  const photos = photosByAnnonce(rows.map((row) => row.id));
+  return rows.map((row) =>
+    mapAnnonceRow(
+      row,
+      photos.get(row.id) || [],
+      { id: row.user_id, pseudo: row.author_pseudo, age: row.author_age },
+      config.baseUrl,
+      { commentCount: row.comment_count }
+    )
+  );
+}
+
+function getOne(id) {
+  const rows = selectRows('a.id = ?', [id]);
+  return rows.length ? serializeRows(rows)[0] : null;
+}
+
+/* ── GET / — annonces approuvées, filtres, recherche, pagination ── */
+router.get('/', (req, res) => {
   const conditions = ["a.status = 'approved'"];
   const params = [];
 
-  if (cat) {
-    conditions.push('LOWER(a.category) = LOWER(?)');
+  const q = validation.text(req.query.q, 80);
+  if (q) {
+    const term = likeTerm(q);
+    conditions.push(
+      "(a.title LIKE ? ESCAPE '\\' OR a.description LIKE ? ESCAPE '\\' OR a.city LIKE ? ESCAPE '\\')"
+    );
+    params.push(term, term, term);
+  }
+
+  if (req.query.cat) {
+    const cat = validation.oneOf(req.query.cat, validation.CATEGORIES);
+    if (!cat) return res.status(400).json({ error: 'Catégorie invalide' });
+    conditions.push('a.category = ?');
     params.push(cat);
   }
+
+  const city = validation.text(req.query.city, 60);
   if (city) {
-    conditions.push('LOWER(a.city) LIKE LOWER(?)');
-    params.push(`%${city}%`);
+    conditions.push("a.city LIKE ? ESCAPE '\\'");
+    params.push(likeTerm(city));
   }
-  if (gender) {
+
+  if (req.query.gender) {
+    const gender = validation.oneOf(req.query.gender, validation.GENDERS);
+    if (!gender) return res.status(400).json({ error: 'Genre invalide' });
     conditions.push('LOWER(a.gender) = LOWER(?)');
     params.push(gender);
   }
 
+  const sortMap = {
+    recent: 'a.created_at DESC, a.id DESC',
+    old: 'a.created_at ASC, a.id ASC',
+    city: 'a.city COLLATE NOCASE ASC, a.created_at DESC',
+    comments: 'comment_count DESC, a.created_at DESC',
+  };
+  const sort = sortMap[String(req.query.sort || 'recent')] || sortMap.recent;
+
+  const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(30, Math.max(1, Number.parseInt(req.query.limit, 10) || 12));
+  const offset = (page - 1) * limit;
   const where = conditions.join(' AND ');
 
   const total = db
@@ -69,129 +114,219 @@ router.get('/', (_req, res) => {
 
   const rows = db
     .prepare(
-      `SELECT a.* FROM annonces a
+      `SELECT a.*, u.pseudo AS author_pseudo, u.age AS author_age,
+              (SELECT COUNT(*) FROM comments c WHERE c.annonce_id = a.id) AS comment_count
+       FROM annonces a JOIN users u ON u.id = a.user_id
        WHERE ${where}
-       ORDER BY a.created_at DESC
+       ORDER BY ${sort}
        LIMIT ? OFFSET ?`
     )
     .all(...params, limit, offset);
 
-  const annonces = rows.map((row) => attachPhotosAndUser(row, config.baseUrl));
-
   res.json({
-    annonces,
-    pagination: {
-      page,
-      limit,
-      total,
-      pages: Math.ceil(total / limit),
-    },
+    annonces: serializeRows(rows),
+    pagination: { page, limit, total, pages: Math.ceil(total / limit) },
   });
 });
 
 /* ── GET /mine — annonces de l'utilisateur connecté ── */
 router.get('/mine', authRequired, (req, res) => {
-  const rows = db
-    .prepare('SELECT * FROM annonces WHERE user_id = ? ORDER BY created_at DESC')
-    .all(req.user.id);
-  const annonces = rows.map((row) => {
-    const photos = db
-      .prepare('SELECT * FROM annonce_photos WHERE annonce_id = ? ORDER BY sort_order')
-      .all(row.id);
-    return mapAnnonceRow(row, photos, req.user, config.baseUrl);
-  });
-  res.json({ annonces });
+  const rows = selectRows('a.user_id = ?', [req.user.id]).sort(
+    (a, b) => String(b.created_at).localeCompare(String(a.created_at))
+  );
+  res.json({ annonces: serializeRows(rows) });
 });
 
-/* ── GET /:id — détail d'une annonce ── */
+/* ── GET /:id — détail ── */
 router.get('/:id', authOptional, (req, res) => {
-  const row = db.prepare('SELECT * FROM annonces WHERE id = ?').get(req.params.id);
-  if (!row) return res.status(404).json({ error: 'Annonce introuvable' });
+  const rows = selectRows('a.id = ?', [req.params.id]);
+  if (!rows.length) return res.status(404).json({ error: 'Annonce introuvable' });
+  const row = rows[0];
   const isOwner = req.user && req.user.id === row.user_id;
   const isStaff = req.user && ['admin', 'moderator'].includes(req.user.role);
   if (row.status !== 'approved' && !isOwner && !isStaff) {
     return res.status(404).json({ error: 'Annonce introuvable' });
   }
-  res.json({ annonce: attachPhotosAndUser(row, config.baseUrl) });
+  res.json({ annonce: serializeRows([row])[0] });
 });
 
 /* ── POST / — créer une annonce (Premium requis) ── */
-router.post('/', authRequired, upload.array('photos', 3), (req, res) => {
-  if (!userHasPremium(req.user)) {
-    // Nettoyer les fichiers uploadés si refus
-    (req.files || []).forEach((f) => fs.unlink(f.path, () => {}));
-    return res.status(402).json({ error: 'Abonnement Premium requis pour publier' });
-  }
-  const files = req.files || [];
-  if (!files.length) {
-    return res.status(400).json({ error: 'Au moins une photo est requise' });
-  }
+router.post(
+  '/',
+  authRequired,
+  publishLimiter,
+  upload.array('photos', config.maxPhotos),
+  asyncHandler(async (req, res) => {
+    if (!userHasPremium(req.user)) {
+      return res.status(402).json({ error: 'Abonnement Premium requis pour publier' });
+    }
 
-  const title = (req.body.title || '').trim();
-  const description = (req.body.description || '').trim();
-  const city = (req.body.city || '').trim();
-  const category = (req.body.category || '').trim();
-  const intention = (req.body.intention || '').trim();
-  const gender = (req.body.gender || '—').trim();
+    const files = req.files || [];
+    if (!files.length) return res.status(400).json({ error: 'Au moins une photo est requise' });
 
-  if (!title || !description || !city || !category || !intention) {
-    files.forEach((f) => fs.unlink(f.path, () => {}));
-    return res.status(400).json({ error: 'Champs requis manquants' });
-  }
+    const title = validation.title(req.body.title);
+    const description = validation.description(req.body.description);
+    const city = validation.city(req.body.city);
+    const category = validation.oneOf(req.body.category, validation.CATEGORIES);
+    const intention = validation.oneOf(req.body.intention, validation.INTENTIONS);
+    const gender = validation.oneOf(req.body.gender, validation.GENDERS) || 'Autre';
 
-  // Validation catégorie
-  const validCategories = ['Rencontre', 'Sortie', 'Discussion', 'Couple'];
-  if (!validCategories.includes(category)) {
-    files.forEach((f) => fs.unlink(f.path, () => {}));
-    return res.status(400).json({ error: 'Catégorie invalide' });
-  }
+    if (!title) return res.status(400).json({ error: 'Titre invalide (5 à 90 caractères)' });
+    if (!description) {
+      return res.status(400).json({ error: 'Description trop courte (20 caractères minimum)' });
+    }
+    if (!city) return res.status(400).json({ error: 'Ville invalide' });
+    if (!category) return res.status(400).json({ error: 'Catégorie invalide' });
+    if (!intention) return res.status(400).json({ error: 'Intention invalide' });
 
-  const id = randomUUID();
-  db.prepare(
-    `INSERT INTO annonces (id, user_id, title, description, city, category, intention, gender, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')`
-  ).run(id, req.user.id, title, description, city, category, intention, gender);
+    const active = db
+      .prepare("SELECT COUNT(*) AS c FROM annonces WHERE user_id = ? AND status IN ('pending','approved')")
+      .get(req.user.id).c;
+    if (active >= config.maxAdsPerUser) {
+      return res.status(400).json({
+        error: `Limite de ${config.maxAdsPerUser} annonces actives atteinte. Supprimez-en une pour publier.`,
+      });
+    }
 
-  const insertPhoto = db.prepare(
-    `INSERT INTO annonce_photos (id, annonce_id, file_name, sort_order) VALUES (?, ?, ?, ?)`
-  );
-  files.forEach((f, i) => {
-    insertPhoto.run(randomUUID(), id, f.filename, i);
-  });
+    const savedNames = await saveUploads(files);
+    const id = randomUUID();
 
-  const newRow = db.prepare('SELECT * FROM annonces WHERE id = ?').get(id);
-  res.status(201).json({
-    annonce: attachPhotosAndUser(newRow, config.baseUrl),
-    message: 'Annonce soumise — en attente de modération',
-  });
-});
+    try {
+      db.transaction(() => {
+        db.prepare(
+          `INSERT INTO annonces (id, user_id, title, description, city, category, intention, gender, status)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')`
+        ).run(id, req.user.id, title, description, city, category, intention, gender);
 
-/* ── DELETE /:id — supprimer une annonce ── */
-router.delete('/:id', authRequired, (req, res) => {
+        const insertPhoto = db.prepare(
+          'INSERT INTO annonce_photos (id, annonce_id, file_name, sort_order) VALUES (?, ?, ?, ?)'
+        );
+        savedNames.forEach((name, i) => insertPhoto.run(randomUUID(), id, name, i));
+      })();
+    } catch (err) {
+      await deleteFiles(savedNames);
+      throw err;
+    }
+
+    res.status(201).json({
+      annonce: getOne(id),
+      message: 'Annonce soumise — en attente de modération',
+    });
+  })
+);
+
+/* ── PATCH /:id — modifier (repasse en modération pour l'auteur) ── */
+router.patch(
+  '/:id',
+  authRequired,
+  publishLimiter,
+  upload.array('photos', config.maxPhotos),
+  asyncHandler(async (req, res) => {
+    const row = db.prepare('SELECT * FROM annonces WHERE id = ?').get(req.params.id);
+    if (!row) return res.status(404).json({ error: 'Annonce introuvable' });
+
+    const isOwner = row.user_id === req.user.id;
+    const isStaff = ['admin', 'moderator'].includes(req.user.role);
+    if (!isOwner && !isStaff) return res.status(403).json({ error: 'Accès refusé' });
+
+    const updates = {};
+    if (req.body.title !== undefined) {
+      const value = validation.title(req.body.title);
+      if (!value) return res.status(400).json({ error: 'Titre invalide (5 à 90 caractères)' });
+      updates.title = value;
+    }
+    if (req.body.description !== undefined) {
+      const value = validation.description(req.body.description);
+      if (!value) return res.status(400).json({ error: 'Description trop courte (20 caractères minimum)' });
+      updates.description = value;
+    }
+    if (req.body.city !== undefined) {
+      const value = validation.city(req.body.city);
+      if (!value) return res.status(400).json({ error: 'Ville invalide' });
+      updates.city = value;
+    }
+    if (req.body.category !== undefined) {
+      const value = validation.oneOf(req.body.category, validation.CATEGORIES);
+      if (!value) return res.status(400).json({ error: 'Catégorie invalide' });
+      updates.category = value;
+    }
+    if (req.body.intention !== undefined) {
+      const value = validation.oneOf(req.body.intention, validation.INTENTIONS);
+      if (!value) return res.status(400).json({ error: 'Intention invalide' });
+      updates.intention = value;
+    }
+    if (req.body.gender !== undefined) {
+      const value = validation.oneOf(req.body.gender, validation.GENDERS);
+      if (!value) return res.status(400).json({ error: 'Genre invalide' });
+      updates.gender = value;
+    }
+
+    const files = req.files || [];
+    if (!Object.keys(updates).length && !files.length) {
+      return res.status(400).json({ error: 'Aucune modification' });
+    }
+
+    const savedNames = files.length ? await saveUploads(files) : [];
+    const oldPhotos = db
+      .prepare('SELECT file_name FROM annonce_photos WHERE annonce_id = ?')
+      .all(row.id)
+      .map((p) => p.file_name);
+
+    try {
+      db.transaction(() => {
+        const sets = Object.keys(updates).map((key) => `${key} = ?`);
+        sets.push("updated_at = datetime('now')");
+        const values = [...Object.values(updates)];
+
+        if (!isStaff) {
+          sets.push("status = 'pending'", 'rejection_reason = NULL', 'moderated_at = NULL', 'moderated_by = NULL');
+        }
+
+        db.prepare(`UPDATE annonces SET ${sets.join(', ')} WHERE id = ?`).run(...values, row.id);
+
+        if (savedNames.length) {
+          db.prepare('DELETE FROM annonce_photos WHERE annonce_id = ?').run(row.id);
+          const insertPhoto = db.prepare(
+            'INSERT INTO annonce_photos (id, annonce_id, file_name, sort_order) VALUES (?, ?, ?, ?)'
+          );
+          savedNames.forEach((name, i) => insertPhoto.run(randomUUID(), row.id, name, i));
+        }
+      })();
+    } catch (err) {
+      await deleteFiles(savedNames);
+      throw err;
+    }
+
+    if (savedNames.length) await deleteFiles(oldPhotos);
+
+    res.json({
+      annonce: getOne(row.id),
+      message: isStaff ? 'Annonce mise à jour' : 'Annonce mise à jour — elle repasse en modération',
+    });
+  })
+);
+
+/* ── DELETE /:id ── */
+router.delete('/:id', authRequired, asyncHandler(async (req, res) => {
   const row = db.prepare('SELECT * FROM annonces WHERE id = ?').get(req.params.id);
   if (!row) return res.status(404).json({ error: 'Annonce introuvable' });
+
   const isOwner = row.user_id === req.user.id;
   const isStaff = ['admin', 'moderator'].includes(req.user.role);
   if (!isOwner && !isStaff) return res.status(403).json({ error: 'Accès refusé' });
 
-  const photos = db.prepare('SELECT file_name FROM annonce_photos WHERE annonce_id = ?').all(row.id);
-  photos.forEach((p) => {
-    if (p.file_name && !p.file_name.startsWith('images/')) {
-      fs.unlink(path.join(config.uploadsDir, p.file_name), () => {});
-    }
-  });
-  db.prepare('DELETE FROM annonces WHERE id = ?').run(row.id);
-  res.json({ ok: true });
-});
+  const files = db
+    .prepare('SELECT file_name FROM annonce_photos WHERE annonce_id = ?')
+    .all(row.id)
+    .map((p) => p.file_name);
 
-/* ── Gestion erreurs Multer ── */
+  db.prepare('DELETE FROM annonces WHERE id = ?').run(row.id);
+  await deleteFiles(files);
+  res.json({ ok: true });
+}));
+
 router.use((err, _req, res, next) => {
-  if (err instanceof multer.MulterError) {
-    return res.status(400).json({ error: err.message });
-  }
-  if (err && err.message === 'Format image non supporté') {
-    return res.status(400).json({ error: err.message });
-  }
+  if (multerErrorResponse(err, res)) return;
   next(err);
 });
 

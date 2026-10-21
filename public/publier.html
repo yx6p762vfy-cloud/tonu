@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<link rel="icon" type="image/jpeg" href="TonuIcon.jpeg"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>tonú Privé — Publier une annonce</title>
+<link rel="stylesheet" href="shared.css"/>
+<style>
+.publish-layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px;align-items:start}
+.publish-layout > *{min-width:0}
+.publish-aside{position:sticky;top:calc(var(--total-nav) + 20px);display:flex;flex-direction:column;gap:16px}
+.publish-aside .premium-banner{margin:0}
+.publish-rules{list-style:none;display:flex;flex-direction:column;gap:8px;margin:0;padding:0}
+.publish-rules li{font-size:11.5px;line-height:1.6;color:var(--grey3);padding-left:16px;position:relative}
+.publish-rules li::before{content:'·';position:absolute;left:2px;color:var(--gold2);font-size:18px;line-height:1}
+.my-ad{
+  display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:14px;align-items:center;
+  padding:12px;border:1px solid var(--black4);background:var(--black);margin-bottom:8px;
+}
+.my-ad-img{width:72px;height:90px;object-fit:cover;background:var(--black3);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--grey2);overflow:hidden}
+.my-ad-img img{width:100%;height:100%;object-fit:cover}
+.my-ad-title{font-family:var(--f-display);font-size:18px;letter-spacing:.04em;text-transform:uppercase;color:var(--white);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.my-ad-meta{font-family:var(--f-mono);font-size:9.5px;color:var(--grey2);display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.my-ad-reason{font-size:11px;color:var(--red);margin-top:6px;line-height:1.5}
+.my-ad-actions{display:flex;flex-direction:column;gap:6px}
+.photo-hint{font-family:var(--f-mono);font-size:9px;color:var(--grey2);letter-spacing:.06em;margin-top:4px}
+.field-error{font-size:10.5px;color:var(--red);margin-top:2px}
+@media(max-width:900px){
+  .publish-layout{grid-template-columns:1fr}
+  .publish-aside{position:relative;top:auto}
+  .my-ad{grid-template-columns:60px minmax(0,1fr)}
+  .my-ad-actions{grid-column:1/-1;flex-direction:row;flex-wrap:wrap}
+  .my-ad-img{width:60px;height:76px}
+}
+</style>
+</head>
+<body>
+<div id="nav-root"></div>
+
+<div class="page-wide">
+  <div class="eyebrow" style="margin-bottom:14px">Espace membre</div>
+  <h1 style="font-family:var(--f-display);font-size:clamp(36px,5vw,52px);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px" id="page-title">Publier une annonce</h1>
+  <p class="form-sub" style="max-width:640px" id="page-sub">Votre annonce sera examinée par la modération avant d’apparaître publiquement.</p>
+
+  <div id="gate"></div>
+
+  <div class="publish-layout" id="publish-layout" style="display:none">
+    <div>
+      <div class="form-card">
+        <form id="publish-form" novalidate>
+          <div class="field">
+            <label for="pub-title">Titre de l’annonce *</label>
+            <input type="text" id="pub-title" required minlength="5" maxlength="90" autocomplete="off" placeholder="Ex. Rencontre tranquille à Abidjan"/>
+            <span class="field-error" id="err-title" hidden></span>
+          </div>
+          <div class="field">
+            <label for="pub-desc">Description *</label>
+            <textarea id="pub-desc" required minlength="20" maxlength="1000" placeholder="Présentez-vous en quelques lignes : ce que vous recherchez, votre ambiance, vos limites. Pas de coordonnées personnelles."></textarea>
+            <span class="photo-hint"><span id="desc-count">0</span> / 1000 caractères · 20 minimum</span>
+          </div>
+          <div class="field">
+            <label for="pub-city">Ville *</label>
+            <input type="text" id="pub-city" required maxlength="60" autocomplete="address-level2" placeholder="Ex. Abidjan"/>
+          </div>
+          <div class="field" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <label for="pub-cat">Catégorie *</label>
+              <select id="pub-cat">
+                <option>Rencontre</option>
+                <option>Sortie</option>
+                <option>Discussion</option>
+                <option>Couple</option>
+              </select>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <label for="pub-intention">Intention *</label>
+              <select id="pub-intention">
+                <option>Rencontre</option>
+                <option>Rencontre sérieuse</option>
+                <option>Sorties</option>
+                <option>Discussion</option>
+                <option>Couple</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="pub-gender">Je me présente comme *</label>
+            <select id="pub-gender">
+              <option value="Femme">Femme</option>
+              <option value="Homme">Homme</option>
+              <option value="Couple">Couple</option>
+              <option value="Autre">Autre / Non précisé</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="pub-photos" id="photos-label">Photos * <span style="text-transform:none;letter-spacing:0">(1 à 3 · JPG, PNG ou WebP · 8 Mo max par image)</span></label>
+            <input type="file" id="pub-photos" accept="image/jpeg,image/png,image/webp" multiple/>
+            <div class="photo-grid" id="photo-preview"></div>
+            <p class="photo-hint" id="photos-hint">Les images sont nettoyées (métadonnées EXIF supprimées) avant publication.</p>
+          </div>
+          <label class="form-check" style="display:flex;gap:10px;align-items:flex-start;font-size:11.5px;color:var(--grey3);line-height:1.6;margin:16px 0 20px">
+            <input type="checkbox" id="pub-confirm" required style="margin-top:3px"/>
+            <span>Je certifie être majeur(e), avoir l’accord des personnes apparaissant sur les photos et respecter les <a href="cgu.html" target="_blank" rel="noopener">CGU</a>.</span>
+          </label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-primary" type="submit" id="btn-submit"><span>Envoyer à modération</span></button>
+            <a href="product.html" class="btn btn-secondary" id="btn-cancel" style="display:none"><span>Annuler</span></a>
+          </div>
+          <p class="form-sub" style="margin:14px 0 0;font-size:10.5px" id="form-note">Publication réservée aux membres Premium. Votre annonce repasse en modération à chaque modification.</p>
+        </form>
+      </div>
+    </div>
+
+    <aside class="publish-aside">
+      <div class="premium-banner" id="premium-side">
+        <h3>Pass Premium</h3>
+        <p>Carte bancaire via Stripe · renouvellement mensuel</p>
+        <p class="premium-price" id="side-price">—</p>
+        <a href="premium.html" class="btn btn-primary btn-sm btn-full" style="margin-top:12px"><span>Gérer mon abonnement</span></a>
+      </div>
+      <div class="form-card" style="padding:22px">
+        <div class="eyebrow" style="margin-bottom:14px">Règles de publication</div>
+        <ul class="publish-rules">
+          <li>Réservé aux personnes majeures (18+). Toute annonce suspectée de minorité est refusée.</li>
+          <li>Pas de contenu illégal, violent, ni de prostitution ou d’escorting.</li>
+          <li>Pas de coordonnées personnelles ni de liens externes dans le texte.</li>
+          <li>Une photo claire de vous ou de votre couple, sans mineur.</li>
+          <li>Maximum 10 annonces actives par membre.</li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+
+  <div class="form-card" style="margin-top:28px;display:none" id="my-ads-wrap">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+      <h2 style="font-family:var(--f-display);font-size:26px;letter-spacing:.04em;text-transform:uppercase;margin:0">Mes annonces</h2>
+      <span class="status-pill" id="ads-count">0</span>
+    </div>
+    <div id="my-ads-list"></div>
+  </div>
+</div>
+
+<div id="footer-root"></div>
+<script src="api.js"></script>
+<script src="shared.js"></script>
+<script>
+document.getElementById('nav-root').innerHTML = buildNavHTML({ activePage: 'publier' });
+document.getElementById('footer-root').innerHTML = buildFooterHTML();
+initShared();
+
+const params = new URLSearchParams(location.search);
+const editId = params.get('edit');
+let photoFiles = [];
+let previewUrls = [];
+let editing = null;
+let premiumPriceLabel = '';
+
+function setGate(html) {
+  const gate = document.getElementById('gate');
+  gate.innerHTML = html || '';
+  gate.style.display = html ? 'block' : 'none';
+}
+
+function clearPreviews() {
+  previewUrls.forEach((url) => URL.revokeObjectURL(url));
+  previewUrls = [];
+  document.getElementById('photo-preview').innerHTML = '';
+}
+
+function renderPreviews() {
+  clearPreviews();
+  const grid = document.getElementById('photo-preview');
+  photoFiles.forEach((file, index) => {
+    const url = URL.createObjectURL(file);
+    previewUrls.push(url);
+    grid.insertAdjacentHTML('beforeend', `
+      <div class="photo-item" style="position:relative;aspect-ratio:1;background:var(--black3);border:1px solid var(--black4);overflow:hidden">
+        <img src="${url}" alt="Aperçu ${index + 1}" style="width:100%;height:100%;object-fit:cover"/>
+        <button type="button" aria-label="Retirer la photo ${index + 1}" data-remove="${index}"
+          style="position:absolute;top:4px;right:4px;width:24px;height:24px;border:none;background:rgba(0,0,0,.65);color:#fff;font-size:14px;cursor:pointer;line-height:1">×</button>
+      </div>`);
+  });
+  grid.querySelectorAll('[data-remove]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      photoFiles.splice(Number(btn.dataset.remove), 1);
+      renderPreviews();
+    });
+  });
+  document.getElementById('photos-hint').textContent = editing && !photoFiles.length
+    ? `Photos actuelles conservées (${(editing.photos || []).length}). Choisissez de nouvelles images pour les remplacer.`
+    : 'Les images sont nettoyées (métadonnées EXIF supprimées) avant publication.';
+}
+
+document.getElementById('pub-photos').addEventListener('change', (e) => {
+  const selected = Array.from(e.target.files || []);
+  e.target.value = '';
+  if (!selected.length) return;
+
+  if (selected.length > 3) {
+    showToast('3 photos maximum', 'error');
+    selected.length = 3;
+  }
+  selected.forEach((file) => {
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
+      showToast(`Format non supporté : ${file.name}`, 'error');
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      showToast(`Image trop lourde (8 Mo max) : ${file.name}`, 'error');
+      return;
+    }
+    if (photoFiles.length >= 3) {
+      showToast('3 photos maximum', 'error');
+      return;
+    }
+    photoFiles.push(file);
+  });
+  renderPreviews();
+});
+
+document.getElementById('pub-desc').addEventListener('input', (e) => {
+  document.getElementById('desc-count').textContent = e.target.value.length;
+});
+
+function fillForm(a) {
+  document.getElementById('pub-title').value = a.title || '';
+  document.getElementById('pub-desc').value = a.desc || '';
+  document.getElementById('desc-count').textContent = (a.desc || '').length;
+  document.getElementById('pub-city').value = a.city || '';
+  document.getElementById('pub-cat').value = a.category || 'Rencontre';
+  document.getElementById('pub-intention').value = a.intention || 'Rencontre';
+  document.getElementById('pub-gender').value = a.gender || 'Autre';
+  document.getElementById('pub-confirm').checked = true;
+}
+
+async function loadMyAds() {
+  const wrap = document.getElementById('my-ads-wrap');
+  const list = document.getElementById('my-ads-list');
+  wrap.style.display = 'block';
+  list.innerHTML = renderEmptyState('Chargement de vos annonces…');
+
+  try {
+    const { annonces } = await API.myAnnonces();
+    document.getElementById('ads-count').textContent = `${annonces.length} annonce${annonces.length > 1 ? 's' : ''}`;
+    if (!annonces.length) {
+      list.innerHTML = renderEmptyState('Vous n’avez publié aucune annonce pour le moment.');
+      return;
+    }
+
+    list.innerHTML = annonces.map((a) => {
+      const photo = (a.photos && a.photos[0]) || a.image || '';
+      return `
+      <div class="my-ad" data-ad="${esc(a.id)}">
+        <div class="my-ad-img">${photo ? `<img src="${esc(photo)}" alt="${esc(a.title)}" loading="lazy"/>` : '✦'}</div>
+        <div style="min-width:0">
+          <div class="my-ad-title">${esc(a.title)}</div>
+          <div class="my-ad-meta">
+            <span class="status-pill ${esc(a.status)}">${esc(statusLabel(a.status))}</span>
+            <span>${esc(a.city)}</span>
+            <span>${esc(formatDate(a.createdAt))}</span>
+            <span>${a.commentCount || 0} commentaire${a.commentCount === 1 ? '' : 's'}</span>
+          </div>
+          ${a.status === 'rejected' && a.rejectionReason ? `<div class="my-ad-reason">Motif du refus : ${esc(a.rejectionReason)}</div>` : ''}
+        </div>
+        <div class="my-ad-actions">
+          <a class="btn btn-sm btn-secondary" href="product.html?id=${encodeURIComponent(a.id)}"><span>Voir</span></a>
+          <a class="btn btn-sm btn-secondary" href="publier.html?edit=${encodeURIComponent(a.id)}"><span>Modifier</span></a>
+          <button type="button" class="btn btn-sm btn-danger" data-delete="${esc(a.id)}"><span>Supprimer</span></button>
+        </div>
+      </div>`;
+    }).join('');
+
+    list.querySelectorAll('[data-delete]').forEach((btn) => {
+      btn.addEventListener('click', () => deleteAd(btn.dataset.delete));
+    });
+  } catch (err) {
+    list.innerHTML = renderEmptyState(err.message || 'Impossible de charger vos annonces.');
+  }
+}
+
+async function deleteAd(id) {
+  const ok = await confirmDialog('Supprimer définitivement cette annonce et ses photos ?', {
+    title: 'Supprimer l’annonce',
+    confirmLabel: 'Supprimer',
+    danger: true,
+  });
+  if (!ok) return;
+  try {
+    await API.deleteAnnonce(id);
+    showToast('Annonce supprimée');
+    if (editing && editing.id === id) {
+      setTimeout(() => { window.location.href = 'publier.html'; }, 500);
+      return;
+    }
+    await loadMyAds();
+  } catch (err) {
+    showToast(err.message || 'Suppression impossible', 'error');
+  }
+}
+
+document.getElementById('publish-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const title = document.getElementById('pub-title').value.trim();
+  const description = document.getElementById('pub-desc').value.trim();
+  const city = document.getElementById('pub-city').value.trim();
+
+  if (title.length < 5) return showToast('Titre trop court (5 caractères minimum)', 'error');
+  if (description.length < 20) return showToast('Description trop courte (20 caractères minimum)', 'error');
+  if (!city) return showToast('Indiquez votre ville', 'error');
+  if (!editing && !photoFiles.length) return showToast('Ajoutez au moins une photo', 'error');
+  if (!document.getElementById('pub-confirm').checked) {
+    return showToast('Confirmez être majeur(e) et respecter les CGU', 'error');
+  }
+
+  const fd = new FormData();
+  fd.append('title', title);
+  fd.append('description', description);
+  fd.append('city', city);
+  fd.append('category', document.getElementById('pub-cat').value);
+  fd.append('intention', document.getElementById('pub-intention').value);
+  fd.append('gender', document.getElementById('pub-gender').value);
+  photoFiles.forEach((file) => fd.append('photos', file));
+
+  const button = document.getElementById('btn-submit');
+  button.disabled = true;
+  button.querySelector('span').textContent = editing ? 'Enregistrement…' : 'Envoi…';
+
+  try {
+    const result = editing
+      ? await API.updateAnnonce(editing.id, fd)
+      : await API.createAnnonce(fd);
+    showToast(result.message || (editing ? 'Annonce mise à jour' : 'Annonce envoyée à la modération'));
+    setTimeout(() => {
+      window.location.href = `product.html?id=${encodeURIComponent(result.annonce.id)}`;
+    }, 700);
+  } catch (err) {
+    if (err.code === 'PREMIUM_REQUIRED' || err.status === 402) {
+      setGate(`<div class="notice warn"><strong>Abonnement Premium requis.</strong> Activez votre Pass pour publier une annonce. <a href="premium.html?redirect=publier.html">Voir les offres</a></div>`);
+    }
+    showToast(err.message || 'Publication impossible', 'error');
+    button.disabled = false;
+    button.querySelector('span').textContent = editing ? 'Enregistrer les modifications' : 'Envoyer à modération';
+  }
+});
+
+async function initPage() {
+  await AUTH.refresh();
+  AUTH.updateNavLabel();
+
+  try {
+    const cfg = await API.stripeConfig();
+    premiumPriceLabel = cfg.priceLabel ? `${cfg.priceLabel} / ${cfg.intervalLabel || 'mois'}` : '';
+    document.getElementById('side-price').textContent = premiumPriceLabel || 'Stripe';
+  } catch { /* prix indisponible */ }
+
+  document.getElementById('premium-side').style.display = AUTH.hasPremium() ? 'none' : 'block';
+
+  if (!AUTH.isLoggedIn()) {
+    setGate(`
+      <div class="notice warn" style="max-width:640px">
+        <strong>Connexion requise.</strong> Créez un compte gratuit pour commenter, puis activez le Pass Premium pour publier une annonce.
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <a href="compte.html?redirect=${encodeURIComponent('publier.html')}" class="btn btn-primary btn-sm"><span>Se connecter / créer un compte</span></a>
+          <a href="product.html" class="btn btn-secondary btn-sm"><span>Parcourir les annonces</span></a>
+        </div>
+      </div>`);
+    return;
+  }
+
+  document.getElementById('my-ads-wrap').style.display = 'block';
+  await loadMyAds();
+
+  if (editId) {
+    try {
+      const { annonce } = await API.getAnnonce(editId);
+      if (annonce.authorId !== AUTH.currentUser().id && !AUTH.isStaff()) {
+        throw new Error('Cette annonce ne vous appartient pas');
+      }
+      editing = annonce;
+      fillForm(annonce);
+      document.getElementById('page-title').textContent = 'Modifier l’annonce';
+      document.getElementById('page-sub').textContent = 'Après enregistrement, votre annonce repasse en modération avant d’être de nouveau visible.';
+      document.getElementById('btn-submit').querySelector('span').textContent = 'Enregistrer les modifications';
+      document.getElementById('btn-cancel').style.display = 'inline-flex';
+      document.getElementById('photos-label').innerHTML = 'Remplacer les photos <span style="text-transform:none;letter-spacing:0">(optionnel · 1 à 3)</span>';
+      document.getElementById('form-note').textContent = 'Laissez vide pour conserver les photos actuelles.';
+      document.getElementById('publish-layout').style.display = 'grid';
+      if (annonce.status === 'rejected' && annonce.rejectionReason) {
+        setGate(`<div class="notice error" style="max-width:640px"><strong>Annonce refusée :</strong> ${esc(annonce.rejectionReason)}<br>Corrigez votre annonce puis soumettez-la à nouveau.</div>`);
+      }
+      renderPreviews();
+      return;
+    } catch (err) {
+      showToast(err.message || 'Annonce introuvable', 'error');
+      setTimeout(() => { window.location.href = 'publier.html'; }, 1200);
+      return;
+    }
+  }
+
+  if (!AUTH.hasPremium()) {
+    setGate(`
+      <div class="notice warn" style="max-width:640px">
+        <strong>Publication réservée aux membres Premium.</strong> Consulter et commenter reste gratuit.
+        <div style="margin-top:12px">
+          <a href="premium.html?redirect=publier.html" class="btn btn-primary btn-sm"><span>Activer le Pass Premium${premiumPriceLabel ? ` — ${esc(premiumPriceLabel)}` : ''}</span></a>
+        </div>
+      </div>`);
+    return;
+  }
+
+  document.getElementById('publish-layout').style.display = 'grid';
+  renderPreviews();
+}
+
+initPage();
+</script>
+</body>
+</html>

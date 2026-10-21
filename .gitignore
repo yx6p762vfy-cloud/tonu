@@ -3,3 +3,6 @@ node_modules/
 data/
 uploads/*
 !uploads/.gitkeep
+.tmp-*
+*.log
+legacy/

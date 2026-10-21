@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<link rel="icon" type="image/jpeg" href="TonuIcon.jpeg"/>
+<link rel="apple-touch-icon" href="TonuIcon.jpeg"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>tonú Privé — Rencontres adultes entre personnes majeures</title>
+<meta name="description" content="tonú Privé : annonces de rencontres entre adultes. Consultation gratuite, commentaires avec compte, publication avec photos via un abonnement Premium payé par Stripe. 18+ uniquement."/>
+<meta property="og:title" content="tonú Privé — Rencontres adultes"/>
+<meta property="og:description" content="Annonces de rencontres entre adultes, modérées et réservées aux personnes majeures. 18+."/>
+<meta property="og:type" content="website"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet" href="shared.css"/>
+<style>
+.hero-dating{
+  position:relative;min-height:calc(100vh - var(--total-nav));
+  display:grid;grid-template-columns:1.1fr 1fr;
+  background:var(--black);border-bottom:1px solid var(--line);
+}
+.hero-dating-visual{
+  position:relative;overflow:hidden;min-height:420px;
+  border-right:1px solid var(--line);
+}
+.hero-dating-visual img{width:100%;height:100%;object-fit:cover;opacity:.88}
+.hero-dating-overlay{
+  position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(122,43,255,.22),transparent 55%,rgba(255,46,99,.18));
+}
+.hero-dating-copy{padding:56px 48px;display:flex;flex-direction:column;justify-content:center}
+.hero-dating-copy .eyebrow{margin-bottom:18px}
+.hero-dating-copy h1{
+  font-family:var(--f-display);font-size:clamp(48px,6vw,88px);
+  letter-spacing:.03em;line-height:.9;text-transform:uppercase;margin-bottom:20px;
+}
+.hero-dating-copy h1 .hl{
+  background:var(--grad-text);
+  -webkit-background-clip:text;background-clip:text;
+  color:transparent;-webkit-text-fill-color:transparent;
+}
+.hero-dating-copy p{font-size:14px;line-height:1.9;color:var(--grey3);max-width:440px;margin-bottom:28px;font-weight:300}
+.hero-cta-row{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:32px}
+.hero-stats{display:flex;gap:28px;flex-wrap:wrap}
+.hero-stat-num{
+  font-family:var(--f-display);font-size:36px;line-height:1;
+  background:var(--grad-text);
+  -webkit-background-clip:text;background-clip:text;
+  color:transparent;-webkit-text-fill-color:transparent;
+  width:fit-content;
+}
+.hero-stat-lbl{font-family:var(--f-mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--grey2);margin-top:4px}
+.strip-dating{background:var(--black3);border-bottom:1px solid var(--black4);padding:14px 24px;text-align:center}
+.strip-dating p{font-family:var(--f-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--grey3)}
+.how-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
+  background:var(--line);border-bottom:1px solid var(--black4);
+}
+.how-card{background:var(--black2);padding:32px 24px;border-right:1px solid var(--line)}
+.how-card:last-child{border-right:none}
+.how-num{font-family:var(--f-mono);font-size:10px;color:var(--gold3);margin-bottom:12px}
+.how-card h3{font-family:var(--f-display);font-size:26px;letter-spacing:.04em;text-transform:uppercase;margin-bottom:10px}
+.how-card p{font-size:12px;line-height:1.85;color:var(--grey3);font-weight:300}
+.premium-cta{
+  display:grid;grid-template-columns:1fr 1fr;gap:0;
+  border-bottom:1px solid var(--line);background:var(--black);
+}
+.premium-cta-copy{padding:48px;border-right:1px solid var(--line)}
+.premium-cta-copy h2{font-family:var(--f-display);font-size:clamp(36px,4vw,52px);text-transform:uppercase;letter-spacing:.04em;margin-bottom:14px}
+.premium-cta-copy h2 .hl{
+  background:var(--grad-text);
+  -webkit-background-clip:text;background-clip:text;
+  color:transparent;-webkit-text-fill-color:transparent;
+}
+.premium-cta-list{list-style:none;display:flex;flex-direction:column;gap:10px;margin:20px 0 24px}
+.premium-cta-list li{font-family:var(--f-mono);font-size:11px;color:var(--grey3);padding-left:16px;position:relative}
+.premium-cta-list li::before{content:'✦';position:absolute;left:0;color:var(--gold2);font-size:8px;top:2px}
+.premium-cta-visual{
+  padding:48px;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(160deg,rgba(122,43,255,.16),var(--black2) 70%);
+}
+.premium-box{
+  border:1px solid var(--gold);padding:32px;text-align:center;max-width:320px;width:100%;
+  background:rgba(8,8,11,.55);
+}
+.premium-box .price{
+  font-family:var(--f-mono);font-size:26px;margin:12px auto;width:fit-content;max-width:100%;word-break:break-word;
+  background:var(--grad-text);
+  -webkit-background-clip:text;background-clip:text;
+  color:transparent;-webkit-text-fill-color:transparent;
+}
+.premium-box .price small{display:block;font-size:9px;color:var(--grey2);letter-spacing:.1em;text-transform:uppercase;margin-top:6px;-webkit-text-fill-color:var(--grey2)}
+.featured-section{padding:48px 0;border-bottom:1px solid var(--line)}
+.section-wrap{padding:0 24px}
+.prod-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:0;
+  background:transparent;
+}
+.prod-grid .pc{background:var(--black2);border:none;box-shadow:0 0 0 1px var(--line);padding:0 0 16px}
+.prod-grid .pc:hover{border-color:var(--line);box-shadow:0 0 0 1px rgba(139,92,246,.65);z-index:2}
+.prod-grid .pc-info{padding:12px 12px 0}
+.prod-grid .empty-state{grid-column:1/-1;background:var(--black2);border:none;box-shadow:0 0 0 1px var(--line)}
+@media(max-width:768px){
+  .hero-dating{grid-template-columns:1fr}
+  .hero-dating-visual{min-height:240px;border-right:none;border-bottom:1px solid var(--line)}
+  .hero-dating-copy{padding:32px 20px}
+  .how-grid{grid-template-columns:1fr}
+  .how-card{border-right:none;border-bottom:1px solid var(--line)}
+  .premium-cta{grid-template-columns:1fr}
+  .premium-cta-copy{border-right:none;border-bottom:1px solid var(--line);padding:32px 20px}
+  .prod-grid{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+<div id="nav-root"></div>
+
+<section class="hero-dating">
+  <div class="hero-dating-visual">
+    <img src="images/hero.jpeg" alt="Couple élégant dans un lounge feutré, ambiance de rencontre entre adultes"/>
+    <div class="hero-dating-overlay"></div>
+  </div>
+  <div class="hero-dating-copy">
+    <div class="eyebrow reveal">18+ · Modération · Respect</div>
+    <h1 class="reveal d1">Rencontres<br><span class="hl">Privées.</span><br>Entre adultes.</h1>
+    <p class="reveal d2">Consultez les annonces gratuitement. Créez un compte pour commenter. Activez le Pass Premium pour publier la vôtre avec photos, en toute discrétion.</p>
+    <div class="hero-cta-row reveal d3">
+      <a href="product.html" class="btn btn-primary"><span>Voir les annonces</span></a>
+      <a href="premium.html" class="btn btn-outline-gold"><span>Pass Premium</span></a>
+    </div>
+    <div class="hero-stats reveal d4">
+      <div><div class="hero-stat-num" id="stat-annonces">—</div><div class="hero-stat-lbl">Annonces en ligne</div></div>
+      <div><div class="hero-stat-num" id="stat-membres">—</div><div class="hero-stat-lbl">Membres inscrits</div></div>
+      <div><div class="hero-stat-num" id="stat-villes">—</div><div class="hero-stat-lbl">Villes représentées</div></div>
+    </div>
+  </div>
+</section>
+
+<div class="strip-dating">
+  <p>Consultation gratuite · Commentaires avec compte · Publication avec photos réservée aux membres Premium · Paiement sécurisé Stripe · 18+ uniquement</p>
+</div>
+
+<section class="featured-section">
+  <div class="section-wrap">
+    <div class="section-title-bar reveal">
+      <h2>Annonces récentes</h2>
+      <a href="product.html" class="see-all">Tout voir</a>
+    </div>
+    <div class="prod-grid" id="featured-grid">
+      <div class="empty-state">Chargement des annonces…</div>
+    </div>
+  </div>
+</section>
+
+<div class="how-grid">
+  <div class="how-card reveal">
+    <div class="how-num">01</div>
+    <h3>Créer un compte</h3>
+    <p>Inscription réservée aux personnes majeures. Votre pseudo reste visible sur vos annonces et commentaires ; votre email ne l’est jamais.</p>
+  </div>
+  <div class="how-card reveal d1">
+    <div class="how-num">02</div>
+    <h3>Parcourir & commenter</h3>
+    <p>Filtrez par catégorie, ville ou mot-clé. Lire les annonces est gratuit ; commenter nécessite simplement un compte.</p>
+  </div>
+  <div class="how-card reveal d2">
+    <div class="how-num">03</div>
+    <h3>Publier en Premium</h3>
+    <p>Activez l’abonnement par carte via Stripe pour publier jusqu’à 3 photos. Chaque annonce est validée par la modération avant sa mise en ligne.</p>
+  </div>
+</div>
+
+<div class="premium-cta">
+  <div class="premium-cta-copy">
+    <div class="eyebrow reveal">Publication</div>
+    <h2 class="reveal d1">Publiez<br>votre <span class="hl">annonce.</span></h2>
+    <ul class="premium-cta-list reveal d2">
+      <li>Jusqu’à 3 photos par annonce</li>
+      <li>Modification et suppression depuis votre compte</li>
+      <li>Validation par la modération avant publication</li>
+      <li>Paiement sécurisé par Stripe — annulation via le portail client</li>
+    </ul>
+    <a href="publier.html" class="btn btn-primary reveal d3"><span>Publier une annonce</span></a>
+  </div>
+  <div class="premium-cta-visual reveal d2">
+    <div class="premium-box">
+      <div class="eyebrow" style="justify-content:center">Pass Premium</div>
+      <div class="price" id="home-premium-price">Tarif sur Stripe</div>
+      <p style="font-size:12px;color:var(--grey3);margin-bottom:20px;line-height:1.6">Publication d’annonces avec photos · abonnement sans engagement</p>
+      <a href="premium.html" class="btn btn-outline-gold btn-full"><span>S’abonner</span></a>
+    </div>
+  </div>
+</div>
+
+<div id="footer-root"></div>
+
+<script src="api.js"></script>
+<script src="shared.js"></script>
+<script>
+document.getElementById('nav-root').innerHTML = buildNavHTML({ activePage: '' });
+document.getElementById('footer-root').innerHTML = buildFooterHTML();
+initShared();
+
+async function loadHome() {
+  try {
+    await bootApp();
+    const grid = document.getElementById('featured-grid');
+    const featured = getAllAnnonces().slice(0, 4);
+    grid.innerHTML = featured.length
+      ? featured.map((a, i) => renderAnnonceCard(a, i)).join('')
+      : renderEmptyState('Aucune annonce publiée pour le moment.', { colspan: 4 });
+    initReveal();
+  } catch {
+    document.getElementById('featured-grid').innerHTML =
+      renderEmptyState('Impossible de charger les annonces. Vérifiez que le serveur est démarré.', { colspan: 4 });
+  }
+
+  try {
+    const stats = await API.stats();
+    document.getElementById('stat-annonces').textContent = stats.annonces;
+    document.getElementById('stat-membres').textContent = stats.members;
+    document.getElementById('stat-villes').textContent = stats.cities;
+  } catch { /* garde les tirets */ }
+
+  try {
+    const cfg = await API.stripeConfig();
+    const priceEl = document.getElementById('home-premium-price');
+    priceEl.innerHTML = cfg.price?.label
+      ? `${esc(cfg.price.label)}<small>Abonnement récurrent</small>`
+      : 'Tarif sur Stripe<small>Abonnement récurrent</small>';
+  } catch { /* tarif par défaut */ }
+}
+
+loadHome();
+</script>
+</body>
+</html>

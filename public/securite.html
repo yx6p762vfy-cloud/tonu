@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<link rel="icon" type="image/jpeg" href="TonuIcon.jpeg"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>tonú Privé — Conseils de sécurité</title>
+<link rel="stylesheet" href="shared.css"/>
+</head>
+<body>
+<div id="nav-root"></div>
+<div class="public-page">
+  <div class="eyebrow">Prudence · Respect · Consentement</div>
+  <h1>Rester en sécurité</h1>
+  <p class="page-intro">tonú Privé ne vérifie pas l’identité des membres. Ces conseils vous aident à protéger votre vie privée et à aborder les rencontres avec discernement.</p>
+
+  <div class="public-card legal-content">
+    <h2>Avant d’échanger</h2>
+    <ul>
+      <li><strong>Protégez votre identité :</strong> ne communiquez pas votre nom complet, votre adresse exacte, votre lieu de travail ou vos réseaux sociaux personnels trop tôt.</li>
+      <li><strong>Utilisez une photo récente</strong> qui vous représente, sans y inclure d’informations identifiantes (badge, adresse, plaque d’immatriculation).</li>
+      <li><strong>Méfiez-vous des profils parfaits :</strong> photos trop professionnelles, déclarations d’amour rapides, refus de visiochat et demandes d’argent sont des signaux d’alerte.</li>
+      <li><strong>Ne partagez jamais</strong> de code de vérification, mot de passe, numéro de carte bancaire, pièce d’identité ou selfie intime avec une personne que vous connaissez peu.</li>
+    </ul>
+
+    <h2>Pendant les échanges</h2>
+    <ul>
+      <li>Restez sur la plateforme tant que vous n’avez pas confiance. Un interlocuteur qui insiste pour quitter le site immédiatement doit vous rendre prudent.</li>
+      <li>Une visiochat courte permet de vérifier que la personne correspond à ses photos.</li>
+      <li>Fixez vos limites clairement. Le consentement est nécessaire et peut être retiré à tout moment.</li>
+      <li>Conservez les échanges problématiques et signalez-les : ils aident la modération à agir.</li>
+    </ul>
+
+    <h2>Première rencontre</h2>
+    <ul>
+      <li><strong>Choisissez un lieu public</strong>, fréquenté et facilement accessible. Prévoyez votre propre moyen de transport.</li>
+      <li><strong>Prévenez un proche</strong> du lieu, de l’heure et de la personne rencontrée. Partagez votre localisation si possible.</li>
+      <li><strong>Restez sobre</strong> et ne laissez jamais votre verre ou vos affaires sans surveillance.</li>
+      <li><strong>Gardez votre téléphone chargé</strong> et convenez d’un message de sécurité avec un proche.</li>
+      <li>Ne vous rendez pas chez la personne ou dans un lieu isolé lors d’une première rencontre. Ne laissez pas la personne vous raccompagner chez vous.</li>
+      <li>Si vous vous sentez mal à l’aise, partez. Vous ne devez aucune explication et pouvez interrompre la rencontre à tout moment.</li>
+    </ul>
+
+    <h2>Signaux d’alerte</h2>
+    <ul>
+      <li>demande d’argent, de crypto-monnaie, de cartes cadeaux ou d’aide pour un « déblocage » ;</li>
+      <li>pression pour envoyer des photos intimes ou des documents ;</li>
+      <li>menaces de divulguer des échanges ou des photos (chantage) ;</li>
+      <li>refus persistant de toute vérification vidéo ou de rencontre en public ;</li>
+      <li>propos haineux, violents, insistants ou irrespectueux des limites.</li>
+    </ul>
+    <p>Face à ces comportements : cessez l’échange, signalez le profil et, en cas de menace ou d’extorsion, contactez les autorités.</p>
+
+    <h2>Signaler sur tonú Privé</h2>
+    <p>Chaque annonce et chaque commentaire dispose d’une option de signalement. Choisissez le motif le plus précis et ajoutez des détails utiles. Pour un contenu impliquant un mineur, une menace grave ou un acte illégal, signalez-le également au support à <a href="#" data-support-link><span data-support-email>contact@example.com</span></a> et, si nécessaire, aux autorités locales.</p>
+
+    <h2>Urgence</h2>
+    <p>En cas de danger immédiat, contactez les services d’urgence de votre pays. En France : <strong>112</strong> (urgences européennes), <strong>17</strong> (police), <strong>3919</strong> (violences faites aux femmes). En Côte d’Ivoire : <strong>110</strong> (police secours) ou <strong>111</strong> (secours). Ces numéros peuvent évoluer : vérifiez les numéros officiels en vigueur.</p>
+
+    <h2>Votre compte</h2>
+    <ul>
+      <li>Utilisez un mot de passe unique d’au moins 8 caractères, différent de vos autres comptes.</li>
+      <li>Ne partagez jamais votre jeton de connexion ni votre mot de passe.</li>
+      <li>Déconnectez-vous sur un appareil partagé.</li>
+      <li>Signalez toute activité suspecte au support.</li>
+    </ul>
+
+    <p class="legal-note">Ces conseils sont fournis à titre préventif et ne remplacent pas les recommandations des autorités locales.</p>
+  </div>
+</div>
+<div id="footer-root"></div>
+<script src="api.js"></script>
+<script src="shared.js"></script>
+<script>
+document.getElementById('nav-root').innerHTML = buildNavHTML({ activePage: '' });
+document.getElementById('footer-root').innerHTML = buildFooterHTML();
+initShared();
+applySupportEmail();
+</script>
+</body>
+</html>

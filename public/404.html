@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<link rel="icon" type="image/jpeg" href="TonuIcon.jpeg"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>tonú Privé — Page introuvable</title>
+<link rel="stylesheet" href="shared.css"/>
+<style>
+.notfound{min-height:calc(100vh - var(--total-nav));display:flex;align-items:center;justify-content:center;padding:48px 20px;text-align:center}
+.notfound-inner{max-width:520px}
+.notfound-code{
+  font-family:var(--f-display);font-size:clamp(96px,20vw,180px);line-height:.85;letter-spacing:.04em;
+  background:var(--grad-text);
+  -webkit-background-clip:text;background-clip:text;
+  color:transparent;-webkit-text-fill-color:transparent;
+}
+.notfound h1{font-family:var(--f-display);font-size:clamp(28px,5vw,42px);letter-spacing:.04em;text-transform:uppercase;margin:16px 0 10px}
+.notfound p{font-size:13px;line-height:1.9;color:var(--grey3);margin-bottom:26px}
+.notfound-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div id="nav-root"></div>
+<main class="notfound">
+  <div class="notfound-inner">
+    <div class="notfound-code">404</div>
+    <h1>Page introuvable</h1>
+    <p>Le lien est peut-être obsolète, l’annonce a été retirée ou l’adresse contient une erreur. Retrouvez les annonces disponibles depuis l’accueil.</p>
+    <div class="notfound-actions">
+      <a href="index.html" class="btn btn-primary"><span>Retour à l’accueil</span></a>
+      <a href="product.html" class="btn btn-secondary"><span>Voir les annonces</span></a>
+    </div>
+  </div>
+</main>
+<div id="footer-root"></div>
+<script src="api.js"></script>
+<script src="shared.js"></script>
+<script>
+document.getElementById('nav-root').innerHTML = buildNavHTML({ activePage: '' });
+document.getElementById('footer-root').innerHTML = buildFooterHTML();
+initShared();
+</script>
+</body>
+</html>

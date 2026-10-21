@@ -6,36 +6,36 @@ function getUserById(id) {
   return db.prepare('SELECT * FROM users WHERE id = ?').get(id);
 }
 
-function authRequired(req, res, next) {
+function readUser(req) {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
-  if (!token) {
-    return res.status(401).json({ error: 'Authentification requise' });
-  }
+  if (!token) return null;
   try {
     const payload = jwt.verify(token, config.jwtSecret);
-    const user = getUserById(payload.sub);
-    if (!user) return res.status(401).json({ error: 'Session invalide' });
-    req.user = user;
-    next();
+    return getUserById(payload.sub) || null;
   } catch {
-    return res.status(401).json({ error: 'Session expirée ou invalide' });
+    return null;
   }
 }
 
-function authOptional(req, _res, next) {
-  const header = req.headers.authorization || '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
-  if (token) {
-    try {
-      const payload = jwt.verify(token, config.jwtSecret);
-      req.user = getUserById(payload.sub) || null;
-    } catch {
-      req.user = null;
-    }
-  } else {
-    req.user = null;
+function authRequired(req, res, next) {
+  if (!req.headers.authorization?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authentification requise' });
   }
+  const user = readUser(req);
+  if (!user) {
+    return res.status(401).json({ error: 'Session expirée ou invalide' });
+  }
+  if (user.banned) {
+    return res.status(403).json({ error: 'Compte suspendu. Contactez le support.', code: 'banned' });
+  }
+  req.user = user;
+  next();
+}
+
+function authOptional(req, _res, next) {
+  const user = readUser(req);
+  req.user = user && !user.banned ? user : null;
   next();
 }
 
@@ -49,7 +49,7 @@ function requireRole(...roles) {
 }
 
 function userHasPremium(user) {
-  return user?.premium_until && new Date(user.premium_until) > new Date();
+  return !!user?.premium_until && new Date(user.premium_until) > new Date();
 }
 
 module.exports = { authRequired, authOptional, requireRole, userHasPremium, getUserById };

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<link rel="icon" type="image/jpeg" href="TonuIcon.jpeg"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>tonú Privé — Mentions légales</title>
+<link rel="stylesheet" href="shared.css"/>
+</head>
+<body>
+<div id="nav-root"></div>
+<div class="public-page">
+  <div class="eyebrow">Informations légales</div>
+  <h1>Mentions légales</h1>
+  <p class="page-intro">Informations relatives à l’éditeur et à l’hébergement du site tonú Privé, conformément aux obligations d’information applicables aux services en ligne.</p>
+
+  <div class="public-card legal-content">
+    <h2>Éditeur du site</h2>
+    <ul>
+      <li><strong>Nom du service :</strong> tonú Privé</li>
+      <li><strong>Éditeur :</strong> tonú Privé</li>
+      <li><strong>Contact :</strong> <a href="#" data-support-link><span data-support-email>contact@example.com</span></a></li>
+      <li><strong>Responsable de la publication :</strong> l’éditeur du service</li>
+      <li><strong>Forme juridique, capital, immatriculation et adresse :</strong> à compléter par l’exploitant avant mise en production, conformément à la réglementation applicable.</li>
+    </ul>
+
+    <h2>Hébergement</h2>
+    <p>Le Site est hébergé sur une infrastructure serveur exploitée pour le compte de l’éditeur. Les coordonnées complètes de l’hébergeur (nom, adresse, téléphone) doivent être renseignées par l’exploitant avant la mise en ligne, conformément aux obligations légales.</p>
+
+    <h2>Activité et public</h2>
+    <p>tonú Privé est un service de mise en relation entre personnes majeures. Le Site ne propose pas de rencontre physique organisée, ne garantit pas l’identité des membres et n’exerce aucune activité de prostitution, d’escorting ou d’entremise rémunérée. L’accès est interdit aux mineurs.</p>
+
+    <h2>Propriété intellectuelle</h2>
+    <p>L’ensemble des éléments du Site (marque, logo, interface, textes, graphismes, code) est protégé par le droit de la propriété intellectuelle. Toute reproduction, représentation ou adaptation non autorisée est interdite. Les contenus publiés par les membres restent la propriété de leurs auteurs, qui accordent à tonú Privé les droits nécessaires à leur hébergement et à leur affichage.</p>
+
+    <h2>Responsabilité</h2>
+    <p>tonú Privé met en œuvre des moyens raisonnables pour assurer l’exactitude des informations et la modération des contenus, sans garantir l’exhaustivité ou l’absence d’erreur. Les contenus publiés par les membres relèvent de leur responsabilité. Le Site ne saurait être tenu responsable des dommages indirects résultant de son utilisation ou de rencontres entre membres.</p>
+
+    <h2>Signalement de contenus illicites</h2>
+    <p>Tout contenu peut être signalé depuis les annonces et commentaires. Pour un signalement urgent (contenu impliquant un mineur, menace, contenu illégal), écrivez à <a href="#" data-support-link><span data-support-email>contact@example.com</span></a> en précisant l’URL concernée. Les signalements sont examinés et peuvent conduire au retrait du contenu et à la suspension du compte.</p>
+
+    <h2>Liens externes</h2>
+    <p>Le Site peut renvoyer vers des services tiers, notamment Stripe pour les paiements et Google Fonts pour l’affichage. tonú Privé n’exerce aucun contrôle sur ces services et décline toute responsabilité quant à leur contenu ou à leurs pratiques.</p>
+
+    <h2>Droit applicable</h2>
+    <p>Le Site est soumis au droit applicable au lieu d’établissement de l’éditeur. Les utilisateurs consommateurs bénéficient des protections impératives de leur pays de résidence.</p>
+
+    <p class="legal-note">Dernière mise à jour : 21 octobre 2026. Les champs relatifs à l’identité juridique de l’exploitant et à l’hébergeur doivent être complétés avant l’ouverture publique du service.</p>
+  </div>
+</div>
+<div id="footer-root"></div>
+<script src="api.js"></script>
+<script src="shared.js"></script>
+<script>
+document.getElementById('nav-root').innerHTML = buildNavHTML({ activePage: '' });
+document.getElementById('footer-root').innerHTML = buildFooterHTML();
+initShared();
+applySupportEmail();
+</script>
+</body>
+</html>

@@ -1,11 +1,14 @@
-function photoUrl(fileName, baseUrl) {
+const path = require('path');
+
+function photoUrl(fileName) {
   if (!fileName) return null;
   if (fileName.startsWith('images/')) return `/${fileName}`;
-  return `${baseUrl}/uploads/${fileName}`;
+  if (/^https?:\/\//i.test(fileName)) return fileName;
+  return `/uploads/${path.basename(fileName)}`;
 }
 
-function mapAnnonceRow(row, photos, user, baseUrl) {
-  const urls = photos.map((p) => photoUrl(p.file_name, baseUrl));
+function mapAnnonceRow(row, photos, user, baseUrl, extra = {}) {
+  const urls = photos.map((p) => photoUrl(p.file_name, baseUrl)).filter(Boolean);
   return {
     id: row.id,
     title: row.title,
@@ -19,10 +22,12 @@ function mapAnnonceRow(row, photos, user, baseUrl) {
     image: urls[0] || null,
     photos: urls,
     createdAt: row.created_at?.slice(0, 10) || row.created_at,
+    updatedAt: row.updated_at || null,
     status: row.status,
     rejectionReason: row.rejection_reason || null,
     userPosted: !!user && !String(user.id).startsWith('demo-'),
     authorId: row.user_id,
+    commentCount: extra.commentCount ?? 0,
   };
 }
 
@@ -35,7 +40,9 @@ function mapUserPublic(u) {
     age: u.age,
     role: u.role,
     premiumUntil: u.premium_until,
-    hasPremium: u.premium_until && new Date(u.premium_until) > new Date(),
+    hasPremium: !!u.premium_until && new Date(u.premium_until) > new Date(),
+    stripeCustomerId: u.stripe_customer_id ? true : false,
+    createdAt: u.created_at,
   };
 }
 

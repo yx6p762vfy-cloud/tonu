@@ -1,38 +1,47 @@
-const express = require('express');
-const path = require('path');
 const config = require('./config');
-const authRoutes = require('./routes/auth');
-const annoncesRoutes = require('./routes/annonces');
-const adminRoutes = require('./routes/admin');
-const commentsRoutes = require('./routes/comments');
-const { router: stripeRoutes, stripeWebhookHandler } = require('./routes/stripe');
+const app = require('./app');
+const db = require('./db');
 
-const app = express();
+config.assertConfig();
 
-app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), stripeWebhookHandler);
-
-app.use(express.json({ limit: '1mb' }));
-app.use('/uploads', express.static(config.uploadsDir));
-app.use(express.static(config.rootDir));
-
-app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, service: 'tonú-privé-api' });
-});
-
-app.use('/api/auth', authRoutes);
-app.use('/api/annonces', annoncesRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/comments', commentsRoutes);
-app.use('/api/stripe', stripeRoutes);
-
-app.use((err, _req, res, _next) => {
-  console.error(err);
-  res.status(500).json({ error: 'Erreur serveur' });
-});
-
-app.listen(config.port, () => {
-  console.log(`tonú Privé → ${config.baseUrl}`);
-  if (!config.stripeSecretKey) {
-    console.warn('[config] STRIPE_SECRET_KEY manquant — paiements désactivés');
+const server = app.listen(config.port, () => {
+  console.log(`[server] tonú Privé → ${config.baseUrl} (${config.nodeEnv})`);
+  if (!config.stripeSecretKey || !config.stripePriceId) {
+    console.warn('[config] Stripe non configuré — les paiements sont désactivés');
+  }
+  if (!config.stripeWebhookSecret) {
+    console.warn('[config] STRIPE_WEBHOOK_SECRET manquant — webhooks non signés en développement');
+  }
+  if (!config.adminEmail || !config.adminPassword) {
+    console.warn('[config] Aucun administrateur configuré (ADMIN_EMAIL / ADMIN_PASSWORD)');
+  }
+  const hasAdmin = db.prepare("SELECT id FROM users WHERE role = 'admin' LIMIT 1").get();
+  if (!hasAdmin) {
+    console.warn('[config] Aucun compte administrateur en base — lancez npm run admin:create');
+  }
+  if (config.supportEmail === 'contact@example.com') {
+    console.warn('[config] SUPPORT_EMAIL utilise encore la valeur par défaut');
   }
 });
+
+let shuttingDown = false;
+function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[server] ${signal} reçu — arrêt en cours`);
+  const timer = setTimeout(() => process.exit(1), 10_000);
+  timer.unref();
+  server.close(() => {
+    try {
+      db.close();
+    } catch (err) {
+      console.error('[server] Fermeture DB :', err.message);
+    }
+    process.exit(0);
+  });
+}
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+
+module.exports = server;

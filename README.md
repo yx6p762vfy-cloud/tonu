@@ -1,255 +1,269 @@
 # tonú Privé
 
-Site de rencontres adultes (18+) avec annonces modérées, commentaires, stockage d'images et abonnement **Stripe**.
+Plateforme de rencontres pour adultes (18+) avec annonces modérées, commentaires et abonnement **Stripe**.
 
-## 🎯 Fonctionnalités
+Le fonctionnement est volontairement simple :
 
-- **Consultation gratuite** : Parcourir les annonces sans compte
-- **Compte utilisateur** : Inscription/connexion, gestion du profil
-- **Commentaires** : Les utilisateurs connectés peuvent commenter les annonces
-- **Publication Premium** : Payer via Stripe pour publier des annonces avec photos
-- **Modération** : Les annonces sont soumises à validation avant publication
-- **Admin** : Interface de modération pour approuver/refuser les annonces
-- **Design premium** : Interface moderne avec curseur personnalisé, animations et responsive
+| Action | Accès |
+|---|---|
+| Consulter les annonces et les profils | Gratuit, sans compte |
+| Commenter une annonce | Compte gratuit obligatoire |
+| Publier une annonce avec photos | Abonnement **Premium** payé via Stripe, puis validation par la modération |
+| Gérer son abonnement | Portail client Stripe depuis l'espace compte |
 
-## 🚀 Démarrage rapide
+## Stack
 
-### Prérequis
-- **Node.js 18+** installé
-- **Stripe account** (mode test ou production)
+- **Node.js 20+** (recommandé : 22 ou 24), Express 4
+- **SQLite** (better-sqlite3, mode WAL), migrations automatiques au démarrage
+- **Stripe** : abonnement récurrent, Checkout, portail client, webhooks signés et idempotents
+- **Sharp** : re-encodage des photos en JPEG, suppression des métadonnées EXIF/GPS, redimensionnement
+- Front statique servi uniquement depuis `public/` — le code serveur, la base et les scripts ne sont jamais exposés
+- JWT + bcrypt (coût 12), limitation de débit, Helmet/CSP, validation et échappement systématiques
 
-### Installation
+## Démarrage local
 
-1. **Cloner le projet** (si applicable) ou naviguer dans le dossier
+Prérequis : Node.js 20+ et npm.
 
-2. **Configurer l'environnement** :
-   ```bash
-   copy .env.example .env
-   ```
+```bash
+npm install
+cp .env.example .env        # Windows : copy .env.example .env
+```
 
-3. **Éditer `.env`** avec vos configurations :
-   ```env
-   PORT=3000
-   BASE_URL=http://localhost:3000
-   JWT_SECRET=votre_secret_jwt_ici
-   ADMIN_EMAIL=admin@example.com
-   ADMIN_PASSWORD=votre_mot_de_passe_admin
+Renseignez au minimum dans `.env` :
 
-   # Stripe (requis pour les paiements)
-   STRIPE_SECRET_KEY=sk_test_...
-   STRIPE_WEBHOOK_SECRET=whsec_...
-   STRIPE_PRICE_ID=price_...
-   ```
+```env
+JWT_SECRET=<32 caractères aléatoires minimum>
+ADMIN_EMAIL=admin@votre-domaine.com
+ADMIN_PASSWORD=<12 caractères minimum>
+```
 
-4. **Installer les dépendances** :
-   ```bash
-   npm install
-   ```
+Générer un secret JWT :
 
-5. **Lancer le serveur** :
-   ```bash
-   npm start
-   ```
-   Pour le développement avec auto-reload :
-   ```bash
-   npm run dev
-   ```
+```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
+```
 
-6. **Ouvrir le site** : [http://localhost:3000](http://localhost:3000)
+Puis :
 
-### Compte Admin
+```bash
+npm start       # production locale
+npm run dev     # rechargement automatique
+```
 
-Au premier lancement, un compte admin est automatiquement créé si `ADMIN_EMAIL` et `ADMIN_PASSWORD` sont définis dans `.env`. Ce compte permet d'accéder à la page de modération (`/admin.html`).
+- Site : http://localhost:3000
+- Modération : http://localhost:3000/admin.html
+- Santé de l'API : http://localhost:3000/api/health
 
-## 💳 Configuration Stripe
+Au premier démarrage, si aucun administrateur n'existe, un compte admin est créé avec `ADMIN_EMAIL` / `ADMIN_PASSWORD`. En développement, `SEED_DEMO` vaut `true` par défaut ; les annonces de démonstration ne sont jamais créées en production.
 
-### Créer un produit d'abonnement
+## Variables d'environnement
 
-1. Connectez-vous au [Dashboard Stripe](https://dashboard.stripe.com)
-2. Créez un **produit** de type "Abonnement mensuel Premium"
-3. Configurez le prix (ex: 4 990 FCFA ou équivalent)
-4. Copiez le **Price ID** (format `price_...`) dans votre `.env` comme `STRIPE_PRICE_ID`
+| Variable | Défaut | Description |
+|---|---|---|
+| `NODE_ENV` | `development` | `production` active les contrôles stricts, HSTS et le cache adapté |
+| `PORT` | `3000` | Port HTTP interne |
+| `BASE_URL` | `http://localhost:3000` | URL publique **HTTPS**, sans slash final. Obligatoire pour Stripe |
+| `TRUST_PROXY` | `false` | `true` derrière nginx, Caddy, Cloudflare… |
+| `JWT_SECRET` | — | Secret de signature, 32 caractères minimum en production |
+| `DATA_DIR` | `./data` | Base SQLite et sauvegardes |
+| `UPLOADS_DIR` | `./uploads` | Photos traitées, dossier inscriptible |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | — | Création du premier administrateur ; mot de passe de 12 caractères min. en production |
+| `SUPPORT_EMAIL` | `contact@example.com` | Adresse affichée sur les pages légales et de contact |
+| `SEED_DEMO` | `true` en dev | À laisser `false` en production |
+| `MAX_UPLOAD_BYTES` | `8388608` | Taille maximale par photo (8 Mo) |
+| `MAX_ADS_PER_USER` | `10` | Annonces actives maximum par membre |
+| `STRIPE_SECRET_KEY` | — | Clé `sk_test_…` ou `sk_live_…` |
+| `STRIPE_PRICE_ID` | — | Prix récurrent `price_…` de l'abonnement Premium |
+| `STRIPE_WEBHOOK_SECRET` | — | Secret `whsec_…` du endpoint webhook, requis en production |
+| `TERMS_VERSION` | `1.0` | Version des CGU acceptée à l'inscription |
 
-### Webhooks Stripe
+La configuration est vérifiée au démarrage en production : `JWT_SECRET` fort, `BASE_URL` HTTPS, secret webhook si Stripe est actif, mot de passe admin d'au moins 12 caractères.
 
-#### En développement (local) :
+## Configuration Stripe
+
+1. Créez un **produit** avec un **prix récurrent** dans le [dashboard Stripe](https://dashboard.stripe.com/products).
+2. Renseignez `STRIPE_SECRET_KEY` et `STRIPE_PRICE_ID` dans `.env`.
+3. Créez un endpoint webhook vers `https://votre-domaine.com/api/stripe/webhook` et abonnez-le aux événements :
+   - `checkout.session.completed`
+   - `customer.subscription.created`
+   - `customer.subscription.updated`
+   - `customer.subscription.deleted`
+4. Copiez le secret de signature dans `STRIPE_WEBHOOK_SECRET`.
+5. Activez le **portail client** Stripe (Paramètres → Facturation → Portail client), utilisé par « Gérer mon abonnement ».
+
+En local, avec la CLI Stripe :
+
 ```bash
 stripe listen --forward-to localhost:3000/api/stripe/webhook
 ```
-Copiez le secret webhook (`whsec_...`) dans `STRIPE_WEBHOOK_SECRET`.
 
-#### En production :
-Configurez l'URL du webhook dans votre dashboard Stripe :
-```
-https://votre-domaine.com/api/stripe/webhook
-```
+Testez d'abord en mode test (`sk_test_…`, carte `4242 4242 4242 4242`), puis basculez sur les clés live. Un webhook non signé est refusé en production ; les événements déjà traités sont ignorés grâce à la table `stripe_events`.
 
-### Événements Stripe gérés
-- `checkout.session.completed` : Activation du Premium après paiement
-- `customer.subscription.updated` : Mise à jour de la date d'expiration
-- `customer.subscription.deleted` : Désactivation du Premium
+## Modération et administration
 
-## 📡 API Routes
+- Les annonces sont créées avec le statut `pending` et restent invisibles du public.
+- L'admin approuve ou refuse avec un motif ; le motif est affiché à l'auteur.
+- Toute modification par l'auteur renvoie l'annonce en modération.
+- Les signalements (annonces et commentaires) sont consultables, résolus ou rejetés depuis `/admin.html`.
+- Les rôles `admin` et `moderator` existent : un modérateur modère les annonces et signalements, mais seul un admin peut suspendre un compte.
 
-### Authentification
-| Route | Méthode | Description |
-|-------|---------|-------------|
-| `/api/auth/register` | POST | Inscription (email, password, pseudo, age) |
-| `/api/auth/login` | POST | Connexion → retourne JWT |
-| `/api/auth/me` | GET | Profil utilisateur (Bearer token requis) |
-
-### Annonces
-| Route | Méthode | Description |
-|-------|---------|-------------|
-| `/api/annonces` | GET | Liste des annonces approuvées (filtres: cat, city, gender) |
-| `/api/annonces/:id` | GET | Détail d'une annonce |
-| `/api/annonces/mine` | GET | Annonces de l'utilisateur connecté |
-| `/api/annonces` | POST | Publier une annonce (Premium requis, multipart/form-data) |
-| `/api/annonces/:id` | DELETE | Supprimer une annonce |
-
-### Commentaires
-| Route | Méthode | Description |
-|-------|---------|-------------|
-| `/api/comments/:annonceId` | GET | Liste des commentaires d'une annonce |
-| `/api/comments/:annonceId` | POST | Ajouter un commentaire (auth requis) |
-| `/api/comments/:annonceId/:commentId` | DELETE | Supprimer un commentaire |
-
-### Admin
-| Route | Méthode | Description |
-|-------|---------|-------------|
-| `/api/admin/pending` | GET | File d'attente modération |
-| `/api/admin/annonces/:id/approve` | POST | Approuver une annonce |
-| `/api/admin/annonces/:id/reject` | POST | Refuser une annonce |
-
-### Stripe
-| Route | Méthode | Description |
-|-------|---------|-------------|
-| `/api/stripe/config` | GET | Configuration Stripe |
-| `/api/stripe/create-checkout-session` | POST | Créer une session de paiement |
-| `/api/stripe/webhook` | POST | Webhook Stripe |
-
-## 🗄️ Base de données
-
-Le site utilise **SQLite** (via `better-sqlite3`) pour une simplicité de déploiement.
-
-- **Fichier** : `data/app.db`
-- **Tables** :
-  - `users` : Comptes utilisateurs
-  - `annonces` : Annonces
-  - `annonce_photos` : Photos des annonces
-  - `comments` : Commentaires
-  - `stripe_events` : Événements Stripe traités
-
-Les migrations sont automatiques au démarrage.
-
-## 📁 Structure du projet
-
-```
-tonu-prive/
-├── server/              # Backend Express
-│   ├── routes/         # Routes API
-│   │   ├── auth.js
-│   │   ├── annonces.js
-│   │   ├── comments.js
-│   │   ├── admin.js
-│   │   └── stripe.js
-│   ├── middleware/      # Middleware (auth)
-│   ├── lib/            # Utilitaires (serialize)
-│   ├── db.js           # Database & migrations
-│   ├── config.js       # Configuration
-│   └── index.js        # Point d'entrée serveur
-├── uploads/            # Images uploadées (créé auto)
-├── data/               # Base SQLite (créé auto)
-├── images/             # Images statiques (demo)
-├── index.html          # Page d'accueil
-├── product.html        # Listing & détail annonces
-├── publier.html        # Publication annonce
-├── premium.html        # Page abonnement
-├── compte.html         # Connexion/Inscription
-├── admin.html          # Modération
-├── shared.css          # Styles globaux
-├── shared.js           # JS partagé (auth, UI)
-├── api.js              # Client API
-├── package.json
-└── .env                # Configuration (à créer)
-```
-
-## 🚢 Déploiement
-
-### Options d'hébergement
-
-#### 1. VPS (DigitalOcean, Hetzner, etc.)
+Scripts utiles :
 
 ```bash
-# Sur le serveur
-git clone <votre-repo>
-cd tonu-prive
-npm install --production
+npm run admin:create -- admin@votre-domaine.com 'MotDePasseSolide!' 'Admin'
+npm run user:reset-password -- membre@exemple.com 'NouveauMotDePasse!'
+```
+
+Ils lisent aussi `ADMIN_EMAIL` / `ADMIN_PASSWORD` ou `RESET_EMAIL` / `RESET_PASSWORD`. Un administrateur ne peut pas supprimer le dernier compte admin.
+
+## Routes API principales
+
+Toutes les routes sont préfixées par `/api`.
+
+| Domaine | Routes |
+|---|---|
+| Public | `GET /health`, `GET /meta`, `GET /stats` |
+| Authentification | `POST /auth/register`, `POST /auth/login`, `GET/PATCH /auth/me`, `POST /auth/me/password`, `GET /auth/me/export`, `DELETE /auth/me` |
+| Annonces | `GET /annonces`, `GET /annonces/mine`, `GET /annonces/:id`, `POST /annonces`, `PATCH /annonces/:id`, `DELETE /annonces/:id` |
+| Commentaires | `GET/POST /comments/:annonceId`, `DELETE /comments/:annonceId/:commentId` |
+| Signalements | `POST /reports` |
+| Administration | `GET /admin/stats`, `GET /admin/annonces`, `POST /admin/annonces/:id/approve`, `POST /admin/annonces/:id/reject`, `GET /admin/reports`, `POST /admin/reports/:id/resolve`, `GET /admin/users`, `POST /admin/users/:id/ban` |
+| Stripe | `GET /stripe/config`, `POST /stripe/create-checkout-session`, `POST /stripe/portal`, `GET /stripe/session-status`, `POST /stripe/webhook` |
+
+Les routes protégées attendent un en-tête `Authorization: Bearer <token>`.
+
+## Tests
+
+```bash
+npm test
+```
+
+La suite démarre un serveur isolé sur un port libre, avec des dossiers temporaires, et couvre : en-têtes de sécurité et non-exposition des fichiers internes, inscriptions et doublons, sessions, filtres/recherche/pagination, commentaires, blocage de publication sans Premium, upload et suppression EXIF, visibilité privée des annonces en attente, modération, refus motivés, rôles, suspensions, signalements, export RGPD, suppression de compte et dégradation propre sans Stripe.
+
+Aucune vraie clé Stripe ni aucun fichier `.env` n'est utilisé par les tests.
+
+## Déploiement
+
+### Option 1 — Docker (recommandé)
+
+Le `Dockerfile` utilise Node 24, un utilisateur non-root et un healthcheck. `docker-compose.yml` persiste la base et les photos dans des volumes nommés.
+
+```bash
 cp .env.example .env
-# Éditer .env avec vos clés de production Stripe
+# Renseignez .env : BASE_URL=https://votre-domaine.com, JWT_SECRET, admin, Stripe…
+docker compose up -d --build
+docker compose ps
+docker compose logs -f app
+```
+
+Le service est publié sur `127.0.0.1:3000` uniquement : ajoutez un reverse proxy TLS (Caddy, nginx, Traefik) devant. Avec Caddy :
+
+```caddyfile
+votre-domaine.com {
+  reverse_proxy 127.0.0.1:3000
+  request_body {
+    max_size 10MB
+  }
+}
+```
+
+Avec nginx, dans votre bloc TLS :
+
+```nginx
+client_max_body_size 10m;
+
+location / {
+    proxy_pass http://127.0.0.1:3000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+Mettez `TRUST_PROXY=true` dans `.env` derrière un proxy. Si le port 3000 est déjà occupé sur l'hôte, modifiez la partie gauche du mapping dans `docker-compose.yml`, pas `PORT` du conteneur.
+
+Commandes dans le conteneur :
+
+```bash
+docker compose exec app npm run admin:create -- admin@votre-domaine.com 'MotDePasseSolide!' 'Admin'
+docker compose exec app npm run user:reset-password -- membre@exemple.com 'NouveauMotDePasse!'
+```
+
+### Option 2 — VPS sans Docker
+
+```bash
+npm ci --omit=dev
+cp .env.example .env    # à remplir
 npm start
 ```
 
-Utilisez **PM2** pour la production :
+Gardez le processus sous PM2 ou systemd, avec redémarrage automatique, et placez HTTPS devant. `NODE_ENV=production` et `BASE_URL=https://…` sont obligatoires.
+
+### Liste de contrôle avant ouverture
+
+- [ ] `NODE_ENV=production`, `BASE_URL` en HTTPS, `JWT_SECRET` aléatoire de 32+ caractères
+- [ ] Mot de passe admin unique de 12+ caractères ; `SUPPORT_EMAIL` réel
+- [ ] `SEED_DEMO=false`
+- [ ] Clés Stripe **live**, webhook signé et testé, portail client activé
+- [ ] Identité de l'éditeur et coordonnées de l'hébergeur complétées dans `public/mentions-legales.html`
+- [ ] Pages CGU, confidentialité, sécurité et mentions légales relues par un conseil juridique
+- [ ] Sauvegardes automatiques de `data/` et `uploads/` testées (restauration comprise)
+- [ ] Reverse proxy TLS, pare-feu, accès SSH restreint, journaux et supervision en place
+- [ ] Parcours complet vérifié : inscription, commentaire, paiement test, webhook, publication, modération
+
+## Sauvegardes et maintenance
+
+SQLite est en mode WAL : ne copiez pas `app.db` seul pendant que l'application tourne. Utilisez la sauvegarde en ligne :
+
 ```bash
-npm install -g pm2
-pm2 start server/index.js --name tonu-prive
-pm2 startup
-pm2 save
+# Hôte, hors Docker
+node -e "const D=require('better-sqlite3');const d=new D('data/app.db');d.backup('backup-app.db').then(()=>d.close())"
+
+# Docker
+docker compose exec app node -e "const D=require('better-sqlite3');const d=new D('/app/data/app.db');d.backup('/app/data/backup-app.db').then(()=>d.close())"
+docker compose cp app:/app/data/backup-app.db ./backup-app.db
 ```
 
-#### 2. Platform as a Service (Render, Railway, etc.)
+Sauvegardez également `uploads/` (photos) ou les volumes `tonu-data` et `tonu-uploads`. Testez régulièrement une restauration sur un environnement séparé.
 
-La plupart des PaaS supportent Node.js. Configurez :
-- **Build command** : `npm install`
-- **Start command** : `npm start`
-- **Environment variables** : Ajoutez toutes les variables du `.env`
+## Sécurité et conformité
 
-#### 3. Docker (optionnel)
+Mesures en place :
 
-Créez un `Dockerfile` :
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm install --production
-COPY . .
-EXPOSE 3000
-CMD ["node", "server/index.js"]
+- Mots de passe hachés avec bcrypt (coût 12), jetons JWT expirant après 7 jours, comptes suspendus bloqués à chaque requête
+- Limitation de débit sur l'API, l'authentification, les commentaires, les signalements, les publications et le paiement
+- Validation stricte des entrées et échappement HTML de tous les contenus affichés (protection XSS stocké)
+- Redirections post-paiement limitées à une liste blanche (protection contre l'open redirect)
+- Upload limité à 3 photos de 8 Mo ; contenu réellement décodé par Sharp, ré-encodé en JPEG et débarrassé des métadonnées EXIF/GPS
+- Annonces en attente et refusées invisibles du public (sauf auteur et modération)
+- Webhooks Stripe signés, événements idempotents, aucune confiance accordée au retour navigateur
+- Export JSON des données et suppression définitive du compte depuis l'espace membre (RGPD)
+- Dossiers `data/`, `uploads/`, `.env` et `legacy/` exclus de Git ; code serveur non servi par le front
+
+Points de vigilance opérateur :
+
+- **Site réservé aux adultes** : vérifiez les obligations de votre juridiction en matière de preuve d'âge, de modération, de signalement de contenus illicites et de conservation. La porte d'entrée 18+ est déclarative et ne constitue pas une vérification d'identité.
+- Les pages légales sont des modèles à faire valider ; l'identité de l'éditeur et de l'hébergeur doit être complétée avant mise en ligne.
+- Aucun email transactionnel n'est envoyé (vérification d'adresse, mot de passe oublié). Utilisez `npm run user:reset-password` ou intégrez un fournisseur SMTP avant d'ouvrir à grande échelle.
+- L'architecture est mono-instance : SQLite et fichiers locaux ne permettent pas de répartir la charge sur plusieurs serveurs sans base et stockage partagés.
+- La modération est humaine et doit être organisée (délais de traitement, escalade des contenus graves).
+- Faites vérifier la conformité fiscale, commerciale et RGPD de votre activité avant exploitation.
+
+## Structure
+
+```
+.
+├── server/            API Express (routes, middleware, validation, upload, Stripe)
+├── public/            Front statique servi au navigateur
+├── scripts/           Création admin et réinitialisation de mot de passe
+├── test/              Tests unitaires et d'intégration (node:test)
+├── data/              Base SQLite (créée au démarrage, ignorée par Git)
+├── uploads/           Photos traitées (créé au démarrage, ignoré par Git)
+├── legacy/            Anciennes pages inutilisées, hors du dossier servi
+├── Dockerfile
+├── docker-compose.yml
+└── .env.example
 ```
 
-## 🔒 Sécurité
-
-- **JWT** pour l'authentification (7 jours par défaut)
-- **Bcrypt** pour le hashage des mots de passe
-- **Validation** des entrées utilisateur
-- **Age gate** : Vérification 18+ à l'entrée du site
-- **Modération** : Les annonces sont validées avant publication
-- **Stripe** : Paiements sécurisés via leur infrastructure
-
-## 📝 Notes importantes
-
-- Le site est conçu pour les adultes (18+)
-- Les images uploadées sont stockées localement dans `uploads/`
-- En production, configurez un backup régulier de `data/app.db`
-- Pour un hébergement avec load balancing, utilisez un stockage externe (S3, etc.) pour les uploads
-- Le mode démo fonctionne sans serveur (données fictives en JS)
-
-## 🐛 Dépannage
-
-### Stripe ne fonctionne pas
-- Vérifiez que `STRIPE_SECRET_KEY` et `STRIPE_PRICE_ID` sont corrects
-- En test, utilisez des clés `sk_test_`
-- Vérifiez que le webhook est configuré correctement
-
-### Les images ne s'affichent pas
-- Vérifiez que le dossier `uploads/` a les droits d'écriture
-- En production, vérifiez que `BASE_URL` pointe vers votre domaine réel
-
-### Erreur de connexion
-- Vérifiez que `JWT_SECRET` est défini dans `.env`
-- Supprimez le fichier `data/app.db` pour réinitialiser la base
-
-## 📄 Licence
-
-Ce projet est privé. Tous droits réservés.
+Le projet est privé. Tous droits réservés.
