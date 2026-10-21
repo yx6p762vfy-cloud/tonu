@@ -4,6 +4,7 @@ const config = require('./config');
 const authRoutes = require('./routes/auth');
 const annoncesRoutes = require('./routes/annonces');
 const adminRoutes = require('./routes/admin');
+const commentsRoutes = require('./routes/comments');
 const { router: stripeRoutes, stripeWebhookHandler } = require('./routes/stripe');
 
 const app = express();
@@ -21,6 +22,7 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/annonces', annoncesRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/comments', commentsRoutes);
 app.use('/api/stripe', stripeRoutes);
 
 app.use((err, _req, res, _next) => {

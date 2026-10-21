@@ -56,8 +56,18 @@ function migrate() {
       processed_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS comments (
+      id TEXT PRIMARY KEY,
+      annonce_id TEXT NOT NULL REFERENCES annonces(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      content TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE INDEX IF NOT EXISTS idx_annonces_status ON annonces(status);
     CREATE INDEX IF NOT EXISTS idx_annonces_user ON annonces(user_id);
+    CREATE INDEX IF NOT EXISTS idx_comments_annonce ON comments(annonce_id);
+    CREATE INDEX IF NOT EXISTS idx_comments_user ON comments(user_id);
   `);
 }
 

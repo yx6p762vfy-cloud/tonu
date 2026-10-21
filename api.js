@@ -96,4 +96,21 @@ const API = {
       body: { reason },
     });
   },
+
+  listComments(annonceId) {
+    return this.request(`/api/comments/${encodeURIComponent(annonceId)}`);
+  },
+
+  createComment(annonceId, content) {
+    return this.request(`/api/comments/${encodeURIComponent(annonceId)}`, {
+      method: 'POST',
+      body: { content },
+    });
+  },
+
+  deleteComment(annonceId, commentId) {
+    return this.request(`/api/comments/${encodeURIComponent(annonceId)}/${encodeURIComponent(commentId)}`, {
+      method: 'DELETE',
+    });
+  },
 };
