@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<link rel="icon" type="image/jpeg" href="TonuIcon.jpeg"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>tonú Privé — Modération</title>
+<link rel="stylesheet" href="shared.css"/>
+<style>
+.mod-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:24px;flex-wrap:wrap;gap:12px;
+}
+.mod-stats{
+  display:flex;gap:12px;flex-wrap:wrap;margin-bottom:28px;
+}
+.mod-stat{
+  flex:1;min-width:120px;padding:16px 20px;
+  background:var(--black);border:1px solid var(--black4);
+  text-align:center;
+}
+.mod-stat-num{
+  font-family:var(--f-display);font-size:36px;
+  letter-spacing:.04em;color:var(--gold);display:block;
+}
+.mod-stat-label{
+  font-family:var(--f-mono);font-size:9px;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--grey3);
+}
+.mod-list{display:flex;flex-direction:column;gap:2px;margin-top:0}
+.mod-item{
+  display:grid;grid-template-columns:140px 1fr auto;gap:0;
+  border:1px solid var(--black4);background:var(--black);
+  overflow:hidden;transition:border-color .2s;
+}
+.mod-item:hover{border-color:var(--gold)}
+.mod-img-wrap{
+  position:relative;overflow:hidden;
+  aspect-ratio:unset;height:160px;background:var(--black3);
+}
+.mod-img-wrap img{width:100%;height:100%;object-fit:cover;display:block}
+.mod-img-placeholder{
+  width:100%;height:100%;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--f-mono);font-size:10px;color:var(--grey3);
+}
+.mod-content{padding:16px 20px}
+.mod-title{
+  font-family:var(--f-display);font-size:20px;
+  letter-spacing:.04em;text-transform:uppercase;
+  color:var(--white);margin-bottom:6px;
+}
+.mod-meta{
+  font-family:var(--f-mono);font-size:10px;letter-spacing:.08em;
+  color:var(--grey2);margin-bottom:10px;
+  display:flex;flex-wrap:wrap;gap:8px;
+}
+.mod-meta span{padding:2px 6px;border:1px solid var(--black4)}
+.mod-desc{font-size:12px;line-height:1.8;color:var(--grey3);margin-bottom:10px}
+.mod-author{
+  font-family:var(--f-mono);font-size:9px;letter-spacing:.08em;
+  color:var(--grey2);padding:6px 10px;background:var(--black3);
+  display:inline-block;margin-top:4px;
+}
+.mod-actions{
+  display:flex;flex-direction:column;gap:0;
+  border-left:1px solid var(--black4);min-width:160px;
+}
+.mod-actions button{
+  flex:1;border:none;border-bottom:1px solid var(--black4);
+  font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  cursor:none;transition:all .2s;padding:0 20px;
+}
+.mod-actions button:last-child{border-bottom:none}
+.mod-btn-approve{background:transparent;color:var(--green-ok)}
+.mod-btn-approve:hover{background:var(--green-ok);color:#fff}
+.mod-btn-reject{background:transparent;color:var(--red)}
+.mod-btn-reject:hover{background:var(--red);color:#fff}
+.mod-btn-view{background:transparent;color:var(--grey3)}
+.mod-btn-view:hover{background:var(--black3);color:var(--white)}
+.mod-date{
+  font-family:var(--f-mono);font-size:8px;letter-spacing:.08em;
+  color:var(--grey2);margin-top:4px;
+}
+.mod-empty{
+  padding:60px 24px;text-align:center;
+  font-family:var(--f-mono);font-size:12px;letter-spacing:.1em;
+  color:var(--grey3);border:1px solid var(--black4);background:var(--black);
+}
+.mod-empty-icon{font-size:32px;margin-bottom:12px}
+.mod-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:var(--f-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+  padding:4px 10px;background:var(--gold);color:var(--black);margin-bottom:16px;
+}
+@media(max-width:768px){
+  .mod-item{grid-template-columns:1fr}
+  .mod-img-wrap{height:200px}
+  .mod-actions{flex-direction:row;border-left:none;border-top:1px solid var(--black4);min-width:unset}
+}
+</style>
+</head>
+<body>
+<div id="nav-root"></div>
+<div class="page-wide">
+  <div class="form-card">
+    <div class="mod-badge" id="role-badge">Modération</div>
+    <div class="mod-header">
+      <div>
+        <h1>File de modération</h1>
+        <p class="form-sub" style="margin-bottom:0">Annonces soumises en attente de validation. Les annonces approuvées deviennent visibles publiquement.</p>
+      </div>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="loadPending()"><span>↻ Rafraîchir</span></button>
+    </div>
+
+    <div class="mod-stats" id="mod-stats" style="display:none">
+      <div class="mod-stat">
+        <span class="mod-stat-num" id="stat-pending">0</span>
+        <span class="mod-stat-label">En attente</span>
+      </div>
+    </div>
+
+    <div id="mod-empty" class="mod-empty" style="display:none">
+      <div class="mod-empty-icon">✓</div>
+      <div>Aucune annonce en attente de modération.</div>
+    </div>
+    <div class="mod-list" id="mod-list"></div>
+  </div>
+</div>
+<div id="footer-root"></div>
+<script src="api.js"></script>
+<script src="shared.js"></script>
+<script>
+document.getElementById('nav-root').innerHTML = buildNavHTML({ activePage: '' });
+document.getElementById('footer-root').innerHTML = buildFooterHTML();
+initShared();
+
+async function loadPending() {
+  await bootApp();
+  const u = AUTH.currentUser();
+  if (!u || (u.role !== 'admin' && u.role !== 'moderator')) {
+    showToast('Accès réservé à la modération', 'error');
+    setTimeout(() => { location.href = 'index.html'; }, 900);
+    return;
+  }
+
+  document.getElementById('role-badge').textContent =
+    u.role === 'admin' ? '⚙ Administrateur' : '⚑ Modérateur';
+
+  const list = document.getElementById('mod-list');
+  const emptyEl = document.getElementById('mod-empty');
+  const statsEl = document.getElementById('mod-stats');
+
+  // Skeleton
+  list.innerHTML = Array.from({ length: 3 }).map(() => `
+    <div class="mod-item" style="pointer-events:none">
+      <div class="mod-img-wrap" style="background:linear-gradient(90deg,var(--black3) 25%,var(--black4) 50%,var(--black3) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite"></div>
+      <div class="mod-content">
+        <div style="height:20px;background:var(--black3);margin-bottom:10px;width:60%;animation:shimmer 1.4s infinite"></div>
+        <div style="height:12px;background:var(--black3);margin-bottom:8px;animation:shimmer 1.4s infinite"></div>
+        <div style="height:12px;background:var(--black4);width:80%;animation:shimmer 1.4s infinite"></div>
+      </div>
+      <div class="mod-actions" style="min-width:160px"></div>
+    </div>`).join('');
+
+  try {
+    const { annonces } = await API.adminPending();
+
+    // Stats
+    document.getElementById('stat-pending').textContent = annonces.length;
+    statsEl.style.display = annonces.length ? 'flex' : 'none';
+    emptyEl.style.display = annonces.length ? 'none' : 'flex';
+
+    if (!annonces.length) {
+      list.innerHTML = '';
+      return;
+    }
+
+    list.innerHTML = annonces.map((a) => `
+      <div class="mod-item" data-id="${a.id}">
+        <div class="mod-img-wrap">
+          ${a.image
+            ? `<img src="${a.image}" alt="${a.title}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+            : ''
+          }
+          <div class="mod-img-placeholder" style="display:${a.image ? 'none' : 'flex'}">
+            <span style="font-size:24px">📸</span>
+          </div>
+        </div>
+        <div class="mod-content">
+          <div class="mod-title">${a.title}</div>
+          <div class="mod-meta">
+            <span>${a.pseudo}</span>
+            <span>${a.city}</span>
+            <span>${a.category}</span>
+            <span>${a.gender || '—'}</span>
+            <span>${a.intention}</span>
+          </div>
+          <p class="mod-desc">${a.desc}</p>
+          ${a.authorEmail ? `<span class="mod-author">✉ ${a.authorEmail}</span>` : ''}
+          <div class="mod-date">Soumis le ${a.createdAt || '—'}</div>
+        </div>
+        <div class="mod-actions">
+          <button class="mod-btn-view" onclick="window.open('product.html?id=${a.id}','_blank')"><span>Voir</span></button>
+          <button class="mod-btn-approve" onclick="approve('${a.id}')"><span>✓ Approuver</span></button>
+          <button class="mod-btn-reject" onclick="reject('${a.id}')"><span>✕ Refuser</span></button>
+        </div>
+      </div>`).join('');
+    attachCursorHover(list);
+  } catch (e) {
+    list.innerHTML = `<div class="mod-empty"><div>Erreur : ${e.message}</div></div>`;
+    showToast(e.message, 'error');
+  }
+}
+
+async function approve(id) {
+  try {
+    await API.adminApprove(id);
+    showToast('Annonce approuvée ✓');
+    loadPending();
+  } catch (e) {
+    showToast(e.message || 'Erreur', 'error');
+  }
+}
+
+async function reject(id) {
+  const reason = prompt('Motif du refus (optionnel) :') || 'Contenu non conforme';
+  if (reason === null) return; // annulé
+  try {
+    await API.adminReject(id, reason);
+    showToast('Annonce refusée');
+    loadPending();
+  } catch (e) {
+    showToast(e.message || 'Erreur', 'error');
+  }
+}
+
+loadPending();
+</script>
+</body>
+</html>

@@ -5,606 +5,176 @@
   <link rel="icon" type="image/jpeg" href="TonuIcon.jpeg"/>
   <link rel="apple-touch-icon" href="TonuIcon.jpeg"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>tonú — Where Tradition Meets Style</title>
+<title>tonú Privé — Rencontres adultes</title>
 <link rel="stylesheet" href="shared.css"/>
 <style>
-/* ══════════════════════════════════════════
-   INDEX — Homepage
-   ══════════════════════════════════════════ */
-
-/* ── HERO ── */
-.hero{
-  position:relative;
-  height:calc(100vh - var(--total-nav));
-  min-height:580px;
-  background:var(--black);
-  overflow:hidden;
-  display:grid;
-  grid-template-columns:1fr 1fr;
+.hero-dating{
+  position:relative;min-height:calc(100vh - var(--total-nav));
+  display:grid;grid-template-columns:1.1fr 1fr;
+  background:var(--black);border-bottom:1px solid var(--black3);
 }
-.hero-panel{
-  position:relative;overflow:hidden;
-  display:flex;flex-direction:column;justify-content:flex-end;
-  padding:48px 40px;
+.hero-dating-visual{
+  position:relative;overflow:hidden;min-height:420px;
   border-right:1px solid var(--black3);
 }
-.hero-panel:last-child{border-right:none}
-.hero-bg{
+.hero-dating-visual img{width:100%;height:100%;object-fit:cover;opacity:.88}
+.hero-dating-overlay{
   position:absolute;inset:0;
-  background-size:cover;background-position:center;
-  transition:transform 8s ease;
+  background:linear-gradient(135deg,rgba(255,255,255,.15),transparent 50%,rgba(0,0,0,.25));
 }
-.hero-panel:hover .hero-bg{transform:scale(1.03)}
-.hero-overlay{
-  position:absolute;inset:0;
-  background:linear-gradient(to top,rgba(0,0,0,.55) 0%,rgba(0,0,0,.1) 60%,transparent 100%);
+.hero-dating-copy{padding:56px 48px;display:flex;flex-direction:column;justify-content:center}
+.hero-dating-copy .eyebrow{margin-bottom:18px}
+.hero-dating-copy h1{
+  font-family:var(--f-display);font-size:clamp(48px,6vw,88px);
+  letter-spacing:.03em;line-height:.9;text-transform:uppercase;margin-bottom:20px;
 }
-.hero-content{position:relative;z-index:2}
-.hero-tag{
-  font-family:var(--f-mono);font-size:10px;letter-spacing:.2em;
-  text-transform:uppercase;color:var(--gold);
-  margin-bottom:14px;display:flex;align-items:center;gap:8px;
+.hero-dating-copy h1 .hl{color:var(--gold)}
+.hero-dating-copy p{font-size:14px;line-height:1.9;color:var(--grey3);max-width:420px;margin-bottom:28px;font-weight:300}
+.hero-cta-row{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:32px}
+.hero-stats{display:flex;gap:28px;flex-wrap:wrap}
+.hero-stat-num{font-family:var(--f-display);font-size:36px;color:var(--gold);line-height:1}
+.hero-stat-lbl{font-family:var(--f-mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--grey2);margin-top:4px}
+.strip-dating{background:var(--black3);border-bottom:1px solid var(--black4);padding:14px 24px;text-align:center}
+.strip-dating p{font-family:var(--f-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--grey3)}
+.how-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:2px;
+  background:var(--black3);border-bottom:1px solid var(--black3);
 }
-.hero-tag::before{content:'';width:12px;height:1px;background:var(--gold)}
-.hero-title{
-  font-family:var(--f-display);
-  font-size:clamp(52px,6vw,92px);
-  letter-spacing:.03em;line-height:.9;
-  color:var(--white);text-transform:uppercase;
-  margin-bottom:18px;
+.how-card{background:var(--black2);padding:32px 24px;border-right:1px solid var(--black3)}
+.how-card:last-child{border-right:none}
+.how-num{font-family:var(--f-mono);font-size:10px;color:var(--gold);margin-bottom:12px}
+.how-card h3{font-family:var(--f-display);font-size:26px;letter-spacing:.04em;text-transform:uppercase;margin-bottom:10px}
+.how-card p{font-size:12px;line-height:1.85;color:var(--grey3);font-weight:300}
+.premium-cta{
+  display:grid;grid-template-columns:1fr 1fr;gap:0;
+  border-bottom:1px solid var(--black3);background:var(--black);
 }
-.hero-sub{
-  font-size:13px;line-height:1.85;
-  color:rgba(0,0,0,.55);
-  max-width:340px;margin-bottom:28px;font-weight:300;
+.premium-cta-copy{padding:48px;border-right:1px solid var(--black3)}
+.premium-cta-copy h2{font-family:var(--f-display);font-size:clamp(36px,4vw,52px);text-transform:uppercase;letter-spacing:.04em;margin-bottom:14px}
+.premium-cta-copy h2 .hl{color:var(--gold)}
+.premium-cta-list{list-style:none;display:flex;flex-direction:column;gap:10px;margin:20px 0 24px}
+.premium-cta-list li{font-family:var(--f-mono);font-size:11px;color:var(--grey3);padding-left:16px;position:relative}
+.premium-cta-list li::before{content:'✦';position:absolute;left:0;color:var(--gold);font-size:8px;top:2px}
+.premium-cta-visual{
+  padding:48px;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(160deg,rgba(168,114,42,.08),var(--black2));
 }
-.hero-panel-1 .hero-bg{background-color:#1E3D2F;background-image:url('images/1.jpeg')}
-.hero-panel-2 .hero-bg{background-color:#2E1A08;background-image:url('images/2.jpeg')}
-/* Hero countdown badge */
-.hero-badge{
-  position:absolute;top:28px;right:28px;z-index:3;
-  background:var(--gold);color:var(--black);
-  padding:10px 16px;
-  font-family:var(--f-mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;
+.premium-box{
+  border:1px solid var(--gold);padding:32px;text-align:center;max-width:320px;width:100%;
 }
-/* Hero scroll cue */
-.hero-scroll-cue{
-  position:absolute;bottom:28px;left:50%;transform:translateX(-50%);
-  display:flex;flex-direction:column;align-items:center;gap:6px;
-  z-index:10;
-  animation:fade-up 1s 1.2s both;
-}
-.hero-scroll-cue span{
-  font-family:var(--f-mono);font-size:8px;letter-spacing:.2em;
-  text-transform:uppercase;color:rgba(0,0,0,.4);
-}
-.hero-scroll-line{
-  width:1px;height:48px;
-  background:linear-gradient(to bottom,rgba(200,169,110,.6),transparent);
-  animation:scroll-bounce 2s ease-in-out infinite;
-}
-@keyframes scroll-bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(8px)}}
-@keyframes fade-up{from{opacity:0;transform:translateX(-50%) translateY(12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
-
-/* ── MARQUEE STRIP ── */
-.strip{
-  background:var(--black3);
-  border-top:1px solid var(--black4);
-  border-bottom:1px solid var(--black4);
-  height:40px;overflow:hidden;display:flex;align-items:center;
-}
-.strip-inner{
-  display:flex;gap:0;white-space:nowrap;
-  animation:strip-scroll 22s linear infinite;
-}
-.strip-item{
-  font-family:var(--f-mono);font-size:10px;letter-spacing:.18em;
-  text-transform:uppercase;color:var(--grey3);
-  padding:0 28px;border-right:1px solid var(--black4);
-  height:40px;display:flex;align-items:center;gap:10px;
-  flex-shrink:0;
-}
-.strip-item .dot{color:var(--gold)}
-@keyframes strip-scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-
-/* ── FEATURED GRID ── */
-.featured-section{
-  padding:48px 0;
-  border-bottom:1px solid var(--black3);
-}
+.premium-box .price{font-family:var(--f-mono);font-size:32px;color:var(--gold);margin:12px 0}
+.featured-section{padding:48px 0;border-bottom:1px solid var(--black3)}
 .section-wrap{padding:0 24px}
 .prod-grid{
-  display:grid;
-  grid-template-columns:repeat(4,1fr);
-  gap:2px;
-  background:var(--black3);
-  border:1px solid var(--black3);
+  display:grid;grid-template-columns:repeat(4,1fr);gap:2px;
+  background:var(--black3);border:1px solid var(--black3);
 }
-.prod-grid .pc{
-  background:var(--black2);
-  border:none;padding:0 0 16px;
-  border-right:1px solid var(--black3);
-}
-.prod-grid .pc:last-child{border-right:none}
+.prod-grid .pc{background:var(--black2);border:none;padding:0 0 16px;border-right:1px solid var(--black3)}
 .prod-grid .pc-info{padding:12px 12px 0}
-
-/* ── BANNER STRIP ── */
-.banner-strip{
-  display:grid;grid-template-columns:1fr 1fr;
-  gap:2px;background:var(--black3);
-  border-top:1px solid var(--black3);
-  border-bottom:1px solid var(--black3);
-}
-.banner-panel{
-  position:relative;height:380px;overflow:hidden;
-  display:flex;align-items:flex-end;padding:36px;
-  cursor:none;
-}
-.banner-panel-bg{
-  position:absolute;inset:0;background-size:cover;background-position:center;
-  transition:transform .8s cubic-bezier(.16,1,.3,1);
-}
-.banner-panel:hover .banner-panel-bg{transform:scale(1.04)}
-.banner-panel-overlay{
-  position:absolute;inset:0;
-  background:linear-gradient(to top,rgba(0,0,0,.55),transparent 60%);
-}
-.banner-content{position:relative;z-index:2}
-.b1-bg{background-color:#1A2A1A;background-image:url('images/3.jpeg')}
-.b2-bg{background-color:#2A1A0A;background-image:url('images/1.jpeg')}
-.banner-eyebrow{
-  font-family:var(--f-mono);font-size:9px;letter-spacing:.2em;
-  text-transform:uppercase;color:var(--gold);margin-bottom:10px;
-}
-.banner-title{
-  font-family:var(--f-display);font-size:clamp(36px,3.5vw,56px);
-  letter-spacing:.04em;color:var(--white);
-  text-transform:uppercase;margin-bottom:16px;line-height:.95;
-}
-.banner-cta{
-  font-family:var(--f-mono);font-size:10px;letter-spacing:.16em;
-  text-transform:uppercase;color:var(--white);
-  text-decoration:none;display:inline-flex;align-items:center;gap:8px;
-  transition:color .2s;cursor:none;
-}
-.banner-cta:hover{color:var(--gold)}
-.banner-cta::after{content:'→';transition:transform .2s}
-.banner-cta:hover::after{transform:translateX(4px)}
-
-/* ── CATEGORIES ROW ── */
-.cats-row{
-  display:grid;grid-template-columns:repeat(5,1fr);
-  gap:2px;background:var(--black3);
-  border-bottom:1px solid var(--black3);
-}
-.cat-tile{
-  background:var(--black2);
-  padding:24px 20px;
-  display:flex;flex-direction:column;gap:8px;
-  border-right:1px solid var(--black3);
-  text-decoration:none;cursor:none;
-  transition:background .2s;
-  position:relative;overflow:hidden;
-}
-.cat-tile:last-child{border-right:none}
-.cat-tile:hover{background:var(--black3)}
-.cat-tile::after{
-  content:'→';
-  position:absolute;right:20px;top:50%;transform:translateY(-50%) translateX(8px);
-  font-size:14px;color:var(--gold);opacity:0;
-  transition:all .25s;
-}
-.cat-tile:hover::after{opacity:1;transform:translateY(-50%) translateX(0)}
-.cat-num{
-  font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;
-  color:var(--grey2);
-}
-.cat-name{
-  font-family:var(--f-display);font-size:22px;letter-spacing:.04em;
-  color:var(--white);text-transform:uppercase;line-height:1;
-}
-.cat-count{
-  font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;
-  color:var(--grey3);
-}
-
-/* ── EDITORIAL SPLIT ── */
-.editorial{
-  display:grid;grid-template-columns:1fr 1fr;
-  min-height:520px;
-  border-bottom:1px solid var(--black3);
-}
-.ed-visual{
-  position:relative;overflow:hidden;
-  background:#E8F0EC;
-  border-right:1px solid var(--black3);
-}
-.ed-visual-bg{
-  position:absolute;inset:0;
-  background:url('images/2.jpeg') center/cover;
-  opacity:.6;
-  transition:transform 6s ease;
-}
-.editorial:hover .ed-visual-bg{transform:scale(1.02)}
-.ed-visual-overlay{
-  position:absolute;inset:0;
-  background:linear-gradient(135deg,rgba(200,169,110,.08),transparent);
-}
-.ed-visual-label{
-  position:absolute;bottom:0;left:0;right:0;
-  padding:32px;
-  background:linear-gradient(to top,rgba(0,0,0,.55),transparent);
-}
-.ed-stat{
-  font-family:var(--f-display);font-size:72px;letter-spacing:.02em;
-  color:var(--gold);line-height:.9;
-}
-.ed-stat-label{
-  font-family:var(--f-mono);font-size:10px;letter-spacing:.18em;
-  text-transform:uppercase;color:rgba(0,0,0,.45);margin-top:4px;
-}
-.ed-content{
-  padding:60px 52px;display:flex;flex-direction:column;justify-content:center;
-  background:var(--black);
-}
-.ed-h{
-  font-family:var(--f-display);
-  font-size:clamp(42px,4vw,66px);
-  letter-spacing:.04em;text-transform:uppercase;
-  color:var(--white);line-height:.92;margin-bottom:22px;
-}
-.ed-h .hl{color:var(--gold)}
-.ed-p{
-  font-size:13px;line-height:2;
-  color:rgba(0,0,0,.55);margin-bottom:28px;
-  max-width:380px;font-weight:300;
-}
-.ed-quote{
-  border-left:2px solid var(--gold);
-  padding:12px 20px;margin-bottom:32px;
-  background:rgba(200,169,110,.04);
-}
-.ed-quote p{
-  font-family:var(--f-mono);font-style:italic;
-  font-size:12px;color:rgba(0,0,0,.55);line-height:1.8;
-}
-
-/* ── GRID 3 PRODUCTS ── */
-.grid-3{
-  display:grid;grid-template-columns:repeat(3,1fr);
-  gap:2px;background:var(--black3);
-  border-bottom:1px solid var(--black3);
-}
-.grid-3 .pc{
-  background:var(--black2);
-  border:none;padding:0 0 16px;
-  border-right:1px solid var(--black3);
-}
-.grid-3 .pc:last-child{border-right:none}
-.grid-3 .pc-info{padding:12px 12px 0}
-
-/* ── REVIEWS ── */
-.reviews{
-  background:var(--black);
-  border-bottom:1px solid var(--black3);
-  padding:48px 0;
-}
-.reviews-grid{
-  display:grid;grid-template-columns:repeat(3,1fr);
-  gap:2px;background:var(--black3);
-  border:1px solid var(--black3);
-}
-.review-card{
-  background:var(--black);padding:28px 24px;
-  border-right:1px solid var(--black3);
-  transition:background .25s;
-}
-.review-card:last-child{border-right:none}
-.review-card:hover{background:var(--black3)}
-.rv-stars{color:var(--gold);font-size:11px;letter-spacing:3px;margin-bottom:14px}
-.rv-text{
-  font-family:var(--f-mono);font-style:italic;
-  font-size:12px;color:rgba(0,0,0,.55);
-  line-height:1.8;margin-bottom:16px;
-}
-.rv-author{
-  font-family:var(--f-mono);font-size:9.5px;letter-spacing:.12em;
-  text-transform:uppercase;color:var(--grey2);
-}
-.rv-loc{font-family:var(--f-mono);font-size:9.5px;color:var(--gold3);margin-top:3px}
-
-/* ── NEWSLETTER ── */
-.newsletter{
-  background:var(--black);
-  border-bottom:1px solid var(--black3);
-  display:grid;grid-template-columns:1fr 1fr;
-}
-.nl-left{
-  padding:60px 52px;border-right:1px solid var(--black3);
-  background:var(--black3);
-}
-.nl-right{padding:60px 52px}
-.nl-h{
-  font-family:var(--f-display);
-  font-size:clamp(38px,3.5vw,58px);
-  letter-spacing:.04em;text-transform:uppercase;
-  color:var(--white);line-height:.92;margin-bottom:12px;
-}
-.nl-h .hl{color:var(--gold)}
-.nl-sub{font-size:13px;color:var(--grey3);line-height:1.8;font-weight:300}
-.nl-form{display:flex;flex-direction:column;gap:12px}
-.nl-input{
-  background:transparent;border:none;
-  border-bottom:1px solid var(--black4);
-  padding:12px 0;font-family:var(--f-body);font-size:13px;
-  color:var(--white);outline:none;
-  transition:border-color .3s;
-}
-.nl-input::placeholder{color:var(--grey2)}
-.nl-input:focus{border-bottom-color:var(--gold)}
-.nl-note{font-family:var(--f-mono);font-size:9px;letter-spacing:.1em;color:var(--grey2)}
-
-/* ── RESPONSIVE ── */
-@media(max-width:1024px){
-  .prod-grid{grid-template-columns:repeat(3,1fr)}
-  .cats-row{grid-template-columns:repeat(3,1fr)}
-  .cats-row .cat-tile:nth-child(3){border-right:none}
-  .cats-row .cat-tile:nth-child(4){border-top:1px solid var(--black3)}
-  .cats-row .cat-tile:nth-child(5){border-top:1px solid var(--black3)}
-}
 @media(max-width:768px){
-  .hero{grid-template-columns:1fr;height:auto}
-  .hero-panel{min-height:52vh;border-right:none;border-bottom:1px solid var(--black3)}
-  .hero-title{font-size:clamp(44px,12vw,72px)}
-  .hero-badge{display:none}
+  .hero-dating{grid-template-columns:1fr}
+  .hero-dating-visual{min-height:240px;border-right:none;border-bottom:1px solid var(--black3)}
+  .hero-dating-copy{padding:32px 20px}
+  .how-grid{grid-template-columns:1fr}
+  .how-card{border-right:none;border-bottom:1px solid var(--black3)}
+  .premium-cta{grid-template-columns:1fr}
+  .premium-cta-copy{border-right:none;border-bottom:1px solid var(--black3);padding:32px 20px}
   .prod-grid{grid-template-columns:repeat(2,1fr)}
-  .prod-grid .pc:nth-child(2n){border-right:none}
-  .cats-row{grid-template-columns:1fr 1fr}
-  .cats-row .cat-tile{border-right:none;border-bottom:1px solid var(--black3)}
-  .cats-row .cat-tile:nth-child(odd){border-right:1px solid var(--black3)}
-  .banner-strip{grid-template-columns:1fr}
-  .banner-panel{height:280px}
-  .editorial{grid-template-columns:1fr}
-  .ed-visual{min-height:280px}
-  .ed-content{padding:40px 20px}
-  .grid-3{grid-template-columns:1fr 1fr}
-  .grid-3 .pc:nth-child(2n){border-right:none}
-  .reviews-grid{grid-template-columns:1fr}
-  .review-card{border-right:none;border-bottom:1px solid var(--black3)}
-  .newsletter{grid-template-columns:1fr}
-  .nl-left{border-right:none;border-bottom:1px solid var(--black3);padding:40px 20px}
-  .nl-right{padding:40px 20px}
-  .section-wrap{padding:0 12px}
-}
-@media(max-width:480px){
-  .prod-grid{grid-template-columns:1fr 1fr}
-  .hero-panel{padding:28px 20px}
-  .hero-sub{display:none}
 }
 </style>
 </head>
 <body>
-
-<!-- INJECTED BY JS -->
 <div id="nav-root"></div>
 
-<!-- HERO -->
-<section class="hero">
-  <div class="hero-panel hero-panel-1">
-    <div class="hero-bg"></div>
-    <div class="hero-overlay"></div>
-    <div class="hero-badge">SS 2025 Drop</div>
-    <div class="hero-content">
-      <div class="hero-tag">Nouveauté</div>
-      <h1 class="hero-title">Wear<br>Your<br>Roots.</h1>
-      <p class="hero-sub">tonú fusionne l'héritage africain et l'élégance urbaine. Chaque pièce raconte une histoire.</p>
-      <a href="product.html?id=p1" class="btn btn-primary"><span>Découvrir →</span></a>
-    </div>
+<section class="hero-dating">
+  <div class="hero-dating-visual">
+    <img src="images/2.jpeg" alt=""/>
+    <div class="hero-dating-overlay"></div>
   </div>
-  <div class="hero-panel hero-panel-2">
-    <div class="hero-bg"></div>
-    <div class="hero-overlay"></div>
-    <div class="hero-content">
-      <div class="hero-tag">Exclusif</div>
-      <h1 class="hero-title">Own<br>The<br>Street.</h1>
-      <p class="hero-sub">Set Gold Edition — la pièce collector de la saison. Stock limité.</p>
-      <a href="product.html?id=p5" class="btn btn-outline-gold"><span>Voir le set →</span></a>
+  <div class="hero-dating-copy">
+    <div class="eyebrow reveal">18+ · Discrétion · Respect</div>
+    <h1 class="reveal d1">Rencontres<br><span class="hl">Privées.</span><br>Entre adultes.</h1>
+    <p class="reveal d2">Parcourez les annonces gratuitement. Passez Premium pour publier la vôtre avec photos et être visible en priorité.</p>
+    <div class="hero-cta-row reveal d3">
+      <a href="product.html" class="btn btn-primary"><span>Voir les annonces</span></a>
+      <a href="premium.html" class="btn btn-outline-gold"><span>Pass Premium</span></a>
     </div>
-  </div>
-  <div class="hero-scroll-cue">
-    <span>Scroll</span>
-    <div class="hero-scroll-line"></div>
+    <div class="hero-stats reveal d4">
+      <div><div class="hero-stat-num">2k+</div><div class="hero-stat-lbl">Profils actifs</div></div>
+      <div><div class="hero-stat-num">18+</div><div class="hero-stat-lbl">Majeurs uniquement</div></div>
+      <div><div class="hero-stat-num">FR · CI</div><div class="hero-stat-lbl">Communauté</div></div>
+    </div>
   </div>
 </section>
 
-<!-- STRIP -->
-<div class="strip" aria-hidden="true">
-  <div class="strip-inner">
-    <span class="strip-item"><span class="dot">✦</span> Nouveautés cette semaine</span>
-    <span class="strip-item"><span class="dot">✦</span> Livraison offerte +50 000 FCFA</span>
-    <span class="strip-item"><span class="dot">✦</span> Paiement MTN MoMo</span>
-    <span class="strip-item"><span class="dot">✦</span> Retours 30 jours</span>
-    <span class="strip-item"><span class="dot">✦</span> Authenticité garantie</span>
-    <span class="strip-item"><span class="dot">✦</span> Nouveautés cette semaine</span>
-    <span class="strip-item"><span class="dot">✦</span> Livraison offerte +50 000 FCFA</span>
-    <span class="strip-item"><span class="dot">✦</span> Paiement MTN MoMo</span>
-    <span class="strip-item"><span class="dot">✦</span> Retours 30 jours</span>
-    <span class="strip-item"><span class="dot">✦</span> Authenticité garantie</span>
-  </div>
+<div class="strip-dating">
+  <p>Consultation gratuite · Publication avec photo réservée aux membres Premium · Mode démo sans serveur</p>
 </div>
 
-<!-- FEATURED PRODUCTS -->
 <section class="featured-section">
   <div class="section-wrap">
     <div class="section-title-bar reveal">
-      <h2>Nouveautés</h2>
+      <h2>Annonces récentes</h2>
       <a href="product.html" class="see-all">Tout voir</a>
     </div>
-  </div>
-  <div class="section-wrap">
     <div class="prod-grid" id="featured-grid"></div>
   </div>
 </section>
 
-<!-- CATS ROW -->
-<div class="cats-row">
-  <a href="product.html?cat=vestes" class="cat-tile reveal">
-    <span class="cat-num">01</span>
-    <span class="cat-name">Vestes</span>
-    <span class="cat-count">48 pièces</span>
-  </a>
-  <a href="product.html?cat=chemises" class="cat-tile reveal d1">
-    <span class="cat-num">02</span>
-    <span class="cat-name">Chemises</span>
-    <span class="cat-count">32 pièces</span>
-  </a>
-  <a href="product.html?cat=pantalons" class="cat-tile reveal d2">
-    <span class="cat-num">03</span>
-    <span class="cat-name">Pantalons</span>
-    <span class="cat-count">26 pièces</span>
-  </a>
-  <a href="product.html?cat=hoodies" class="cat-tile reveal d3">
-    <span class="cat-num">04</span>
-    <span class="cat-name">Hoodies</span>
-    <span class="cat-count">22 pièces</span>
-  </a>
-  <a href="product.html?cat=accessoires" class="cat-tile reveal d4">
-    <span class="cat-num">05</span>
-    <span class="cat-name">Accessoires</span>
-    <span class="cat-count">18 pièces</span>
-  </a>
+<div class="how-grid">
+  <div class="how-card reveal">
+    <div class="how-num">01</div>
+    <h3>Créer un compte</h3>
+    <p>Inscription rapide, réservée aux personnes majeures. Votre pseudo reste visible sur vos annonces.</p>
+  </div>
+  <div class="how-card reveal d1">
+    <div class="how-num">02</div>
+    <h3>Parcourir</h3>
+    <p>Filtrez par ville, intention ou catégorie. Lire les annonces ne nécessite pas d'abonnement.</p>
+  </div>
+  <div class="how-card reveal d2">
+    <div class="how-num">03</div>
+    <h3>Publier en Premium</h3>
+    <p>Débloquez la publication avec photo, la mise en avant et la gestion de vos annonces.</p>
+  </div>
 </div>
 
-<!-- BANNER STRIP -->
-<div class="banner-strip">
-  <div class="banner-panel" onclick="location.href='product.html?id=p6'" style="cursor:none">
-    <div class="banner-panel-bg b1-bg"></div>
-    <div class="banner-panel-overlay"></div>
-    <div class="banner-content reveal">
-      <div class="banner-eyebrow">Exclusif tonú</div>
-      <h3 class="banner-title">Bomber<br>Adinkra</h3>
-      <a href="product.html?id=p6" class="banner-cta">Explorer la pièce</a>
-    </div>
+<div class="premium-cta">
+  <div class="premium-cta-copy">
+    <div class="eyebrow reveal">Monétisation</div>
+    <h2 class="reveal d1">Publiez<br>votre <span class="hl">annonce.</span></h2>
+    <ul class="premium-cta-list reveal d2">
+      <li>Publication avec une ou plusieurs photos</li>
+      <li>Modification et suppression de vos annonces</li>
+      <li>Badge Premium sur votre profil public</li>
+      <li>Paiement simulé en démo (Mobile Money / carte à brancher)</li>
+    </ul>
+    <a href="publier.html" class="btn btn-primary reveal d3"><span>Publier une annonce</span></a>
   </div>
-  <div class="banner-panel" onclick="location.href='product.html?id=p5'" style="cursor:none">
-    <div class="banner-panel-bg b2-bg"></div>
-    <div class="banner-panel-overlay"></div>
-    <div class="banner-content reveal d2">
-      <div class="banner-eyebrow">Collection Capsule</div>
-      <h3 class="banner-title">Gold<br>Edition</h3>
-      <a href="product.html?id=p5" class="banner-cta">Voir le set</a>
+  <div class="premium-cta-visual reveal d2">
+    <div class="premium-box">
+      <div class="eyebrow" style="justify-content:center">Pass mensuel</div>
+      <div class="price" id="home-premium-price">4 990 FCFA</div>
+      <p style="font-size:12px;color:var(--grey3);margin-bottom:20px;line-height:1.6">Accès publication · 30 jours</p>
+      <a href="premium.html" class="btn btn-outline-gold btn-full"><span>S'abonner</span></a>
     </div>
   </div>
 </div>
 
-<!-- EDITORIAL -->
-<div class="editorial">
-  <div class="ed-visual">
-    <div class="ed-visual-bg"></div>
-    <div class="ed-visual-overlay"></div>
-    <div class="ed-visual-label">
-      <div class="ed-stat">18–35</div>
-      <div class="ed-stat-label">L'homme africain moderne</div>
-    </div>
-  </div>
-  <div class="ed-content">
-    <div class="eyebrow reveal" style="margin-bottom:20px">Notre histoire</div>
-    <h2 class="ed-h reveal d1">Respecte<br>Tes <span class="hl">Racines.</span><br>Maîtrise<br>Le Style.</h2>
-    <p class="ed-p reveal d2">tonú est né d'une vision simple mais puissante — l'homme moderne africain mérite une marque qui lui ressemble. Stylé, ancré, confiant.</p>
-    <div class="ed-quote reveal d3">
-      <p>"Street style with heritage. La mode comme déclaration d'identité."</p>
-    </div>
-    <a href="product.html" class="btn btn-outline-gold reveal d4"><span>Explorer la collection →</span></a>
-  </div>
-</div>
-
-<!-- GRID 3 -->
-<section class="featured-section">
-  <div class="section-wrap">
-    <div class="section-title-bar reveal">
-      <h2>Pièces Signature</h2>
-      <a href="product.html" class="see-all">Tout voir</a>
-    </div>
-  </div>
-  <div class="section-wrap">
-    <div class="grid-3" id="signature-grid"></div>
-  </div>
-</section>
-
-<!-- REVIEWS -->
-<section class="reviews">
-  <div class="section-wrap">
-    <div class="section-title-bar reveal">
-      <h2>Ils portent tonú</h2>
-      <span class="see-all" style="cursor:none">48 avis vérifiés</span>
-    </div>
-    <div class="reviews-grid">
-      <div class="review-card reveal">
-        <div class="rv-stars">★★★★★</div>
-        <p class="rv-text">"La Veste Kente est une pièce d'art. Je la porte en réunion comme en soirée. Qualité exceptionnelle."</p>
-        <div class="rv-author">— Kwame A.</div>
-        <div class="rv-loc">Paris, France</div>
-      </div>
-      <div class="review-card reveal d2">
-        <div class="rv-stars">★★★★★</div>
-        <p class="rv-text">"Enfin une marque qui comprend le style africain moderne. Élégant, culturel, sans compromis."</p>
-        <div class="rv-author">— Inès M.</div>
-        <div class="rv-loc">Abidjan, Côte d'Ivoire</div>
-      </div>
-      <div class="review-card reveal d3">
-        <div class="rv-stars">★★★★★</div>
-        <p class="rv-text">"Le Set Gold Edition a changé mon rapport à la mode. Je me sens pleinement moi-même."</p>
-        <div class="rv-author">— David O.</div>
-        <div class="rv-loc">Bruxelles, Belgique</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- NEWSLETTER -->
-<div class="newsletter">
-  <div class="nl-left">
-    <div class="eyebrow reveal" style="margin-bottom:18px">Rejoindre la famille</div>
-    <h2 class="nl-h reveal d1">Reste dans<br>L'<span class="hl">orbite.</span></h2>
-    <p class="nl-sub reveal d2">Accès prioritaire aux nouvelles pièces, drops exclusifs et avant-premières.</p>
-  </div>
-  <div class="nl-right">
-    <div class="nl-form reveal">
-      <input class="nl-input" type="text" placeholder="Ton prénom"/>
-      <input class="nl-input" type="email" placeholder="Ton adresse email"/>
-      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:8px">
-        <button class="btn btn-primary" onclick="nlSubmit()"><span>Rejoindre tonú</span></button>
-        <span class="nl-note">Pas de spam. Désinscription libre.</span>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- FOOTER placeholder -->
 <div id="footer-root"></div>
 
+<script src="api.js"></script>
 <script src="shared.js"></script>
 <script>
-// Inject nav + footer
-document.getElementById('nav-root').innerHTML = buildNavHTML({activePage:''});
+document.getElementById('nav-root').innerHTML = buildNavHTML({ activePage: '' });
 document.getElementById('footer-root').innerHTML = buildFooterHTML();
 initShared();
-
-// Render featured products (first 4)
-(function(){
+document.getElementById('home-premium-price').textContent = PREMIUM_PRICE_DISPLAY + ' FCFA';
+bootApp().then(() => {
   const g = document.getElementById('featured-grid');
-  if(g) g.innerHTML = PRODUCTS.slice(0,4).map((p,i)=>renderProductCard(p,i)).join('');
-})();
-
-// Render signature (last 3)
-(function(){
-  const g = document.getElementById('signature-grid');
-  if(g) g.innerHTML = PRODUCTS.slice(3,6).map((p,i)=>renderProductCard(p,i+3)).join('');
-})();
-
-function nlSubmit(){
-  showToast('Bienvenue dans la famille tonú ✦');
-}
+  if (g) g.innerHTML = getAllAnnonces().slice(0, 4).map((a, i) => renderAnnonceCard(a, i)).join('');
+  initReveal();
+});
 </script>
 </body>
 </html>

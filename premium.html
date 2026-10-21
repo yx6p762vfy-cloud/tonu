@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<link rel="icon" type="image/jpeg" href="TonuIcon.jpeg"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>tonú Privé — Pass Premium</title>
+<link rel="stylesheet" href="shared.css"/>
+<style>
+.premium-page{display:grid;grid-template-columns:1fr 360px;min-height:calc(100vh - var(--total-nav));align-items:start}
+.premium-main{border-right:1px solid var(--black3);padding:40px 32px}
+.premium-main h1{font-family:var(--f-display);font-size:clamp(40px,5vw,56px);text-transform:uppercase;letter-spacing:.04em;margin-bottom:12px}
+.premium-main h1 .hl{color:var(--gold)}
+.feature-list{list-style:none;margin:28px 0 32px;display:flex;flex-direction:column;gap:12px}
+.feature-list li{font-size:13px;color:var(--grey3);padding-left:20px;position:relative;line-height:1.6}
+.feature-list li::before{content:'✓';position:absolute;left:0;color:var(--gold);font-weight:600}
+.premium-aside{padding:40px 28px;background:var(--black);position:sticky;top:var(--total-nav)}
+@media(max-width:768px){.premium-page{grid-template-columns:1fr}.premium-aside{position:relative}}
+</style>
+</head>
+<body>
+<div id="nav-root"></div>
+
+<div class="premium-page">
+  <div class="premium-main">
+    <div class="eyebrow reveal">Abonnement</div>
+    <h1 class="reveal d1">Pass <span class="hl">Premium</span></h1>
+    <p class="form-sub reveal d2">Publiez des annonces avec photos. Paiement sécurisé par <strong>Stripe</strong> (carte). L’abonnement est activé automatiquement après paiement via webhook.</p>
+    <ul class="feature-list reveal d3">
+      <li>Publication avec photos (stockées sur le serveur)</li>
+      <li>Annonces soumises à modération avant mise en ligne</li>
+      <li>Gestion de vos annonces depuis « Publier »</li>
+      <li>Renouvellement et annulation gérés dans le portail Stripe</li>
+    </ul>
+    <p class="form-sub" id="stripe-status" style="font-family:var(--f-mono);font-size:10px"></p>
+  </div>
+  <aside class="premium-aside">
+    <div class="premium-banner" style="margin-bottom:0">
+      <h3>Abonnement mensuel</h3>
+      <p class="premium-price" id="premium-price">Stripe</p>
+      <p id="premium-desc">Prix défini dans votre tableau de bord Stripe (Price ID)</p>
+    </div>
+    <button type="button" class="btn btn-primary btn-full btn-lg" id="btn-subscribe" onclick="subscribe()"><span>Payer avec Stripe</span></button>
+    <p class="form-sub" style="margin-top:16px;font-size:11px">Connexion requise. Mode test Stripe tant que vous utilisez des clés <code>sk_test_</code>.</p>
+  </aside>
+</div>
+
+<div id="footer-root"></div>
+<script src="api.js"></script>
+<script src="shared.js"></script>
+<script>
+document.getElementById('nav-root').innerHTML = buildNavHTML({ activePage: 'premium' });
+document.getElementById('footer-root').innerHTML = buildFooterHTML();
+initShared();
+
+const redirect = new URLSearchParams(location.search).get('redirect') || 'publier.html';
+const params = new URLSearchParams(location.search);
+
+bootApp().then(async () => {
+  if (params.get('success') === '1') {
+    await AUTH.refresh();
+    AUTH.updateNavLabel();
+    showToast('Paiement reçu — Premium activé sous peu ✦');
+  }
+  if (params.get('canceled') === '1') showToast('Paiement annulé', 'error');
+  try {
+    const cfg = await API.stripeConfig();
+    document.getElementById('stripe-status').textContent = cfg.configured
+      ? 'Stripe configuré sur le serveur.'
+      : 'Stripe non configuré : renseignez STRIPE_SECRET_KEY et STRIPE_PRICE_ID dans .env';
+    document.getElementById('btn-subscribe').disabled = !cfg.configured;
+  } catch {
+    document.getElementById('stripe-status').textContent = 'Impossible de joindre l’API — lancez npm start';
+  }
+});
+
+async function subscribe() {
+  if (!AUTH.isLoggedIn()) {
+    showToast('Connecte-toi d\'abord', 'error');
+    setTimeout(() => {
+      window.location.href = 'compte.html?redirect=' + encodeURIComponent(location.pathname + location.search);
+    }, 600);
+    return;
+  }
+  if (AUTH.hasPremium()) {
+    showToast('Premium déjà actif');
+    setTimeout(() => { window.location.href = redirect; }, 500);
+    return;
+  }
+  try {
+    const target = 'premium.html?success=1&redirect=' + encodeURIComponent(redirect);
+    const { url } = await API.createCheckoutSession(target);
+    window.location.href = url;
+  } catch (e) {
+    showToast(e.message || 'Erreur Stripe', 'error');
+  }
+}
+</script>
+</body>
+</html>

@@ -5,7 +5,7 @@
   <link rel="icon" type="image/jpeg" href="TonuIcon.jpeg"/>
   <link rel="apple-touch-icon" href="TonuIcon.jpeg"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>tonú — Collection</title>
+<title>tonú Privé — Annonces</title>
 <link rel="stylesheet" href="shared.css"/>
 <style>
 /* ══════════════════════════════════════════
@@ -331,29 +331,27 @@
 <div class="breadcrumb" id="breadcrumb">
   <a href="index.html">Accueil</a>
   <span class="sep">›</span>
-  <span class="current" id="breadCurrent">Collection</span>
+  <span class="current" id="breadCurrent">Annonces</span>
 </div>
 
 <!-- ══ LISTING VIEW ══ -->
 <div id="listing-view">
   <div class="listing-header">
     <div>
-      <span class="listing-title">Collection</span>
-      <span class="listing-count" id="listCount">— 6 pièces</span>
+      <span class="listing-title">Annonces</span>
+      <span class="listing-count" id="listCount">— 0 annonces</span>
     </div>
     <div class="listing-filters">
-      <button class="filter-btn" onclick="sortProducts('new')">Nouveautés</button>
-      <button class="filter-btn" onclick="sortProducts('price-asc')">Prix ↑</button>
-      <button class="filter-btn" onclick="sortProducts('price-desc')">Prix ↓</button>
+      <button class="filter-btn active" onclick="sortProducts('new')">Récentes</button>
+      <button class="filter-btn" onclick="sortProducts('city')">Ville A→Z</button>
     </div>
   </div>
   <div class="filter-tags">
     <button class="filter-tag active" onclick="filterCat('all',this)">Tous</button>
-    <button class="filter-tag" onclick="filterCat('vestes',this)">Vestes</button>
-    <button class="filter-tag" onclick="filterCat('chemises',this)">Chemises</button>
-    <button class="filter-tag" onclick="filterCat('pantalons',this)">Pantalons</button>
-    <button class="filter-tag" onclick="filterCat('hoodies',this)">Hoodies</button>
-    <button class="filter-tag" onclick="filterCat('ensembles',this)">Ensembles</button>
+    <button class="filter-tag" onclick="filterCat('rencontre',this)">Rencontres</button>
+    <button class="filter-tag" onclick="filterCat('sortie',this)">Sorties</button>
+    <button class="filter-tag" onclick="filterCat('discussion',this)">Discussion</button>
+    <button class="filter-tag" onclick="filterCat('couple',this)">Couples</button>
   </div>
   <div class="listing-grid" id="listing-grid"></div>
 </div>
@@ -377,60 +375,24 @@
     <div class="dv-info">
       <div class="dv-brand" id="dv-brand"></div>
       <h1 class="dv-name" id="dv-name"></h1>
-      <div class="dv-rating">
-        <span class="dv-stars">★★★★★</span>
-        <span class="dv-reviews">(48 avis)</span>
-      </div>
-      <div class="dv-price" id="dv-price"></div>
+      <div class="dv-price" id="dv-price" style="font-size:14px;font-family:var(--f-mono);color:var(--grey3);margin-bottom:12px"></div>
       <p class="dv-desc" id="dv-desc"></p>
 
-      <div class="dv-size-label">
-        Taille <span class="dv-size-guide">Guide des tailles</span>
-      </div>
-      <div class="dv-sizes" id="dv-sizes"></div>
-
-      <div class="dv-qty-row">
-        <span class="dv-qty-label">Quantité</span>
-        <div class="qty-ctrl">
-          <button class="qty-btn" onclick="changeQty(-1)">−</button>
-          <span class="qty-val" id="qty-val">1</span>
-          <button class="qty-btn" onclick="changeQty(1)">+</button>
-        </div>
-      </div>
+      <div class="dv-sizes" id="dv-tags" style="margin-bottom:20px"></div>
 
       <div class="dv-cta">
-        <button class="btn btn-primary btn-full btn-lg" onclick="addToCart()"><span>Ajouter au panier</span></button>
-        <button class="btn-wish" id="wish-btn" onclick="toggleWish()">♡</button>
+        <button class="btn btn-primary btn-full btn-lg" onclick="contactAnnonce()"><span>Contacter (Premium bientôt)</span></button>
       </div>
-      <button class="btn btn-secondary btn-full" style="margin-bottom:24px" onclick="buyNow()"><span>Commander maintenant →</span></button>
+      <a href="premium.html" class="btn btn-outline-gold btn-full" style="margin:12px 0 24px"><span>Publier ma propre annonce</span></a>
 
       <div class="dv-delivery">
         <div class="dv-del-item">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          Livraison offerte dès 50 000 FCFA
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Profils majeurs · signalement disponible
         </div>
         <div class="dv-del-item">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/></svg>
-          Livraison standard 3–5 jours ouvrés
-        </div>
-        <div class="dv-del-item">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
-          Retours gratuits sous 30 jours
-        </div>
-      </div>
-
-      <div class="dv-accordion">
-        <div class="acc-item">
-          <button class="acc-head" onclick="toggleAcc(this)">Composition & Matière<span class="acc-arrow">▾</span></button>
-          <div class="acc-body"><p>100% coton sergé premium 280g/m². Traitement hydrofuge certifié OEKO-TEX. Doublure en satin polyester recyclé. Boutons en métal doré brossé.</p></div>
-        </div>
-        <div class="acc-item">
-          <button class="acc-head" onclick="toggleAcc(this)">Entretien<span class="acc-arrow">▾</span></button>
-          <div class="acc-body"><p>Lavage à la main recommandé à 30°C. Ne pas mettre au sèche-linge. Repassage à basse température. Nettoyage à sec possible.</p></div>
-        </div>
-        <div class="acc-item">
-          <button class="acc-head" onclick="toggleAcc(this)">Livraison & Retours<span class="acc-arrow">▾</span></button>
-          <div class="acc-body"><p>Livraison standard 3–5 jours ouvrés. Express 24h disponible. Retours gratuits 30 jours. Échange de taille offert une fois.</p></div>
+          <span id="dv-location"></span>
         </div>
       </div>
     </div>
@@ -440,7 +402,7 @@
   <section class="related-section">
     <div style="padding:0 24px">
       <div class="section-title-bar">
-        <h2>Vous aimerez aussi</h2>
+        <h2>Annonces similaires</h2>
         <a href="product.html" class="see-all">Tout voir</a>
       </div>
     </div>
@@ -452,9 +414,10 @@
 
 <div id="footer-root"></div>
 
+<script src="api.js"></script>
 <script src="shared.js"></script>
 <script>
-document.getElementById('nav-root').innerHTML = buildNavHTML({activePage:'collection'});
+document.getElementById('nav-root').innerHTML = buildNavHTML({ activePage: 'annonces' });
 document.getElementById('footer-root').innerHTML = buildFooterHTML();
 initShared();
 
@@ -462,210 +425,182 @@ const params = new URLSearchParams(location.search);
 const pid = params.get('id');
 const catFilter = params.get('cat');
 
-let currentProduct = null;
-let selectedSize = null;
-let qty = 1;
-let wished = false;
-let currentProducts = [...PRODUCTS];
+let currentAnnonce = null;
+let currentAnnonces = [];
 
-/* ══ LISTING ══ */
-function renderListing(products){
+function renderListing(list) {
   const g = document.getElementById('listing-grid');
-  document.getElementById('listCount').textContent = `— ${products.length} pièces`;
-  g.innerHTML = products.map((p,i) => {
-    const idx = PRODUCTS.indexOf(p);
-    return renderProductCard(p, idx);
-  }).join('');
-  // Re-attach cursor hover after injection
-  g.querySelectorAll('a,button').forEach(el=>{
-    el.addEventListener('mouseenter',()=>document.body.classList.add('cur-hover'));
-    el.addEventListener('mouseleave',()=>document.body.classList.remove('cur-hover'));
-  });
-}
-
-function filterCat(cat, btn){
-  document.querySelectorAll('.filter-tag').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  if(cat === 'all'){
-    currentProducts = [...PRODUCTS];
-  } else {
-    currentProducts = PRODUCTS.filter(p=>p.cat.toLowerCase().includes(cat));
+  document.getElementById('listCount').textContent = `— ${list.length} annonce${list.length !== 1 ? 's' : ''}`;
+  if (!list.length) {
+    g.innerHTML = `<div style="grid-column:1/-1;padding:60px 24px;text-align:center;color:var(--grey3);font-family:var(--f-mono);font-size:12px;letter-spacing:.1em">AUCUNE ANNONCE DANS CETTE CATÉGORIE</div>`;
+    return;
   }
-  renderListing(currentProducts);
-  // re-init reveal
-  setTimeout(()=>{
-    document.querySelectorAll('.reveal:not(.vis)').forEach(el=>{
-      const obs2=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting)x.target.classList.add('vis')}),{threshold:.05});
-      obs2.observe(el);
-    });
-  },50);
+  g.innerHTML = list.map((a, i) => renderAnnonceCard(a, i)).join('');
+  attachCursorHover(g);
 }
 
-function sortProducts(mode){
-  const sorted = [...currentProducts];
-  if(mode==='price-asc') sorted.sort((a,b)=>a.price-b.price);
-  else if(mode==='price-desc') sorted.sort((a,b)=>b.price-a.price);
+function filterCat(cat, btn) {
+  document.querySelectorAll('.filter-tag').forEach((b) => b.classList.remove('active'));
+  btn.classList.add('active');
+  const all = getAllAnnonces().length ? getAllAnnonces() : [...ANNONCES_DEMO];
+  if (cat === 'all') currentAnnonces = all;
+  else {
+    currentAnnonces = all.filter(
+      (a) =>
+        (a.category && a.category.toLowerCase().includes(cat)) ||
+        (a.intention && a.intention.toLowerCase().includes(cat))
+    );
+  }
+  renderListing(currentAnnonces);
+}
+
+async function loadDetailById(id) {
+  try {
+    const { annonce } = await API.getAnnonce(id);
+    return annonce;
+  } catch {
+    return findAnnonce(id);
+  }
+}
+
+function sortProducts(mode) {
+  const sorted = [...currentAnnonces];
+  if (mode === 'city') sorted.sort((a, b) => (a.city || '').localeCompare(b.city || ''));
+  else sorted.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
   renderListing(sorted);
 }
 
-/* ══ DETAIL ══ */
-function loadDetail(p){
-  currentProduct = p;
-  selectedSize = p.sizes[0];
-  qty = 1;
-  const idx = PRODUCTS.indexOf(p);
+function loadDetail(a) {
+  currentAnnonce = a;
+  const idx = getAllAnnonces().findIndex((x) => x.id === a.id);
 
-  document.title = `tonú — ${p.name}`;
-  document.getElementById('breadCurrent').textContent = p.name;
+  document.title = `${SITE.name} — ${a.title}`;
+  document.getElementById('breadCurrent').textContent = a.title;
 
-  // Visual
   const mainImg = document.getElementById('dv-main-img');
   const cloth = document.getElementById('dv-cloth');
   const mainEl = document.getElementById('dv-main');
+  const img = a.image || (a.photos && a.photos[0]);
 
-  if(p.image){
-    mainImg.src = p.image;
-    mainImg.alt = p.name;
+  if (img) {
+    mainImg.src = img;
+    mainImg.alt = a.title;
     mainImg.style.display = 'block';
     cloth.parentElement.style.display = 'none';
     mainEl.style.background = '#111';
-    mainImg.onerror = function(){
-      this.style.display='none';
-      cloth.parentElement.style.display='flex';
-      cloth.style.background = p.clothColor;
-      mainEl.style.background = p.bgGrad;
-    };
   } else {
     mainImg.style.display = 'none';
     cloth.parentElement.style.display = 'flex';
-    cloth.style.background = p.clothColor;
-    mainEl.style.background = p.bgGrad;
+    cloth.style.background = CLOTH_COLORS[idx % CLOTH_COLORS.length];
+    mainEl.style.background = BG_GRADS[idx % BG_GRADS.length];
   }
 
-  // Badge
   const badge = document.getElementById('dv-badge');
-  if(p.badge){ badge.textContent=p.badge; badge.style.display='block'; }
-  else { badge.style.display='none'; }
+  badge.textContent = a.category || 'Annonce';
+  badge.style.display = 'block';
 
-  // Thumbs
+  const photos = a.photos && a.photos.length ? a.photos : img ? [img] : [];
   const thumbs = document.getElementById('dv-thumbs');
-  const thumbColors = [p.clothColor, '#888', '#555', '#333'].map((c,i)=>({
-    color: i===0 ? p.clothColor : CLOTH_COLORS[(idx+i)%CLOTH_COLORS.length],
-    img: i===0 ? p.image : PRODUCTS[(idx+i)%PRODUCTS.length]?.image || ''
-  }));
-  thumbs.innerHTML = thumbColors.map((t,i)=>`
-    <div class="dv-thumb ${i===0?'active':''}" onclick="setThumb(this, ${i})">
-      ${t.img
-        ? `<img src="${t.img}" alt="" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><div class="dv-thumb-cloth" style="background:${t.color};display:none"></div>`
-        : `<div class="dv-thumb-cloth" style="background:${t.color}"></div>`
-      }
-    </div>
-  `).join('');
-
-  // Info
-  document.getElementById('dv-brand').textContent = p.brand;
-  document.getElementById('dv-name').textContent = p.name;
-  document.getElementById('dv-price').textContent = `${p.priceDisplay} FCFA`;
-  document.getElementById('dv-desc').textContent = p.desc;
-
-  // Sizes
-  const sizesEl = document.getElementById('dv-sizes');
-  sizesEl.innerHTML = p.sizes.map((s,i)=>`
-    <button class="size-btn ${i===0?'sel':''}" onclick="selectSize('${s}',this)">${s}</button>
-  `).join('');
-
-  document.getElementById('qty-val').textContent = 1;
-  document.getElementById('wish-btn').textContent = '♡';
-  document.getElementById('wish-btn').classList.remove('active');
-  wished = false;
-
-  // Related
-  const related = PRODUCTS.filter(x=>x.id!==p.id).slice(0,4);
-  const rg = document.getElementById('related-grid');
-  rg.innerHTML = related.map((rp,i)=>renderProductCard(rp, PRODUCTS.indexOf(rp))).join('');
-
-  // Re-attach cursor hover
-  setTimeout(()=>{
-    document.querySelectorAll('a,button,.pc,.size-btn,.qty-btn').forEach(el=>{
-      el.addEventListener('mouseenter',()=>document.body.classList.add('cur-hover'));
-      el.addEventListener('mouseleave',()=>document.body.classList.remove('cur-hover'));
+  thumbs.innerHTML = photos
+    .map(
+      (src, i) => `
+    <div class="dv-thumb ${i === 0 ? 'active' : ''}" data-thumb-idx="${i}">
+      <img src="${src}" alt="" style="width:100%;height:100%;object-fit:cover"/>
+    </div>`
+    )
+    .join('');
+  thumbs.querySelectorAll('[data-thumb-idx]').forEach((el) => {
+    el.addEventListener('click', () => {
+      const i = Number(el.getAttribute('data-thumb-idx'));
+      setThumb(el, photos[i]);
     });
-  },100);
+  });
+
+  document.getElementById('dv-brand').textContent = `${a.pseudo} · ${a.age} ans · ${a.gender || ''}`;
+  document.getElementById('dv-name').textContent = a.title;
+  document.getElementById('dv-price').textContent = `${a.intention || a.category} · Publié le ${a.createdAt || '—'}`;
+  document.getElementById('dv-desc').textContent = a.desc;
+  document.getElementById('dv-location').textContent = a.city || 'Ville non précisée';
+
+  const tagsEl = document.getElementById('dv-tags');
+  tagsEl.innerHTML = [a.city, a.category, a.intention]
+    .filter(Boolean)
+    .map((t) => `<span class="pc-meta">${t}</span>`)
+    .join('');
+
+  const related = getAllAnnonces().filter((x) => x.id !== a.id).slice(0, 4);
+  document.getElementById('related-grid').innerHTML = related.map((r, i) => renderAnnonceCard(r, i)).join('');
+  attachCursorHover(document.getElementById('related-grid'));
 }
 
-function setThumb(el, idx){
-  document.querySelectorAll('.dv-thumb').forEach((t,i)=>t.classList.toggle('active',i===idx));
-  if(currentProduct){
-    const altProd = PRODUCTS[(PRODUCTS.indexOf(currentProduct)+idx)%PRODUCTS.length];
-    const mainImg = document.getElementById('dv-main-img');
-    const cloth = document.getElementById('dv-cloth');
-    const mainEl = document.getElementById('dv-main');
-    if(idx===0 && currentProduct.image){
-      mainImg.src = currentProduct.image; mainImg.style.display='block';
-      cloth.parentElement.style.display='none';
-    } else if(altProd?.image){
-      mainImg.src = altProd.image; mainImg.style.display='block';
-      cloth.parentElement.style.display='none';
-    } else {
-      mainImg.style.display='none';
-      cloth.parentElement.style.display='flex';
-      cloth.style.background = CLOTH_COLORS[(PRODUCTS.indexOf(currentProduct)+idx)%CLOTH_COLORS.length];
+function setThumb(el, src) {
+  document.querySelectorAll('.dv-thumb').forEach((t) => t.classList.remove('active'));
+  el.classList.add('active');
+  const mainImg = document.getElementById('dv-main-img');
+  mainImg.src = src;
+  mainImg.style.display = 'block';
+}
+
+function contactAnnonce() {
+  if (!AUTH.isLoggedIn()) {
+    showToast('Connecte-toi pour contacter (messagerie à venir)', 'error');
+    setTimeout(() => { window.location.href = 'compte.html?redirect=' + encodeURIComponent(location.href); }, 600);
+    return;
+  }
+  showToast('Messagerie privée — prochaine étape ✦');
+}
+
+/* ── Skeleton loader ── */
+function showSkeleton(n = 8) {
+  const g = document.getElementById('listing-grid');
+  document.getElementById('listCount').textContent = '— chargement…';
+  g.innerHTML = Array.from({ length: n }).map(() => `
+    <div class="pc" style="pointer-events:none">
+      <div class="pc-img" style="background:linear-gradient(90deg,var(--black3) 25%,var(--black4) 50%,var(--black3) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite"></div>
+      <div class="pc-info">
+        <div style="height:10px;background:var(--black3);margin-bottom:8px;width:60%;border-radius:2px;animation:shimmer 1.4s infinite"></div>
+        <div style="height:14px;background:var(--black3);margin-bottom:6px;border-radius:2px;animation:shimmer 1.4s infinite"></div>
+        <div style="height:10px;background:var(--black4);width:80%;border-radius:2px;animation:shimmer 1.4s infinite"></div>
+      </div>
+    </div>`).join('');
+}
+
+bootApp().then(async () => {
+  if (pid) {
+    // ── MODE DÉTAIL ──
+    document.getElementById('listing-view').style.display = 'none';
+    document.getElementById('detail-view').style.display = 'block';
+    const a = await loadDetailById(pid);
+    if (a) loadDetail(a);
+    else {
+      showToast('Annonce introuvable', 'error');
+      setTimeout(() => { window.location.href = 'product.html'; }, 1500);
     }
-  }
-}
-
-function selectSize(s, btn){
-  selectedSize = s;
-  document.querySelectorAll('.size-btn').forEach(b=>b.classList.remove('sel'));
-  btn.classList.add('sel');
-}
-function changeQty(d){
-  qty = Math.max(1, Math.min(10, qty+d));
-  document.getElementById('qty-val').textContent = qty;
-}
-function addToCart(){
-  if(!currentProduct || !selectedSize){ showToast('Choisis une taille','error'); return; }
-  for(let i=0;i<qty;i++) CART.add({...currentProduct, size:selectedSize});
-  showToast(`${currentProduct.name} (${selectedSize}) ajouté ✦`);
-}
-function buyNow(){
-  if(!currentProduct || !selectedSize){ showToast('Choisis une taille','error'); return; }
-  for(let i=0;i<qty;i++) CART.add({...currentProduct, size:selectedSize});
-  window.location.href = 'cart.html';
-}
-function toggleWish(){
-  wished = !wished;
-  document.getElementById('wish-btn').textContent = wished ? '♥' : '♡';
-  document.getElementById('wish-btn').classList.toggle('active', wished);
-  showToast(wished ? 'Ajouté aux favoris ♥' : 'Retiré des favoris');
-}
-function toggleAcc(btn){
-  const body = btn.nextElementSibling;
-  const isOpen = body.classList.contains('open');
-  document.querySelectorAll('.acc-body').forEach(b=>b.classList.remove('open'));
-  document.querySelectorAll('.acc-head').forEach(b=>b.classList.remove('open'));
-  if(!isOpen){ body.classList.add('open'); btn.classList.add('open'); }
-}
-
-/* ══ ROUTE ══ */
-if(pid){
-  const p = PRODUCTS.find(x=>x.id===pid) || PRODUCTS[0];
-  document.getElementById('listing-view').style.display = 'none';
-  document.getElementById('detail-view').style.display = 'block';
-  loadDetail(p);
-} else {
-  document.getElementById('listing-view').style.display = 'block';
-  document.getElementById('detail-view').style.display = 'none';
-  // Apply cat filter from URL if any
-  if(catFilter){
-    const matchingBtn = [...document.querySelectorAll('.filter-tag')]
-      .find(b=>b.textContent.toLowerCase().includes(catFilter.toLowerCase()));
-    if(matchingBtn) filterCat(catFilter, matchingBtn);
-    else renderListing(PRODUCTS);
   } else {
-    renderListing(PRODUCTS);
+    // ── MODE LISTING ──
+    document.getElementById('listing-view').style.display = 'block';
+    document.getElementById('detail-view').style.display = 'none';
+    showSkeleton(8);
+    currentAnnonces = getAllAnnonces();
+    if (!currentAnnonces.length) currentAnnonces = [...ANNONCES_DEMO];
+
+    if (catFilter && catFilter !== 'all') {
+      const matchingBtn = [...document.querySelectorAll('.filter-tag')].find((b) =>
+        b.textContent.toLowerCase().includes(catFilter.toLowerCase())
+      );
+      if (matchingBtn) {
+        document.querySelectorAll('.filter-tag').forEach((b) => b.classList.remove('active'));
+        matchingBtn.classList.add('active');
+      }
+      currentAnnonces = currentAnnonces.filter(
+        (a) =>
+          (a.category && a.category.toLowerCase().includes(catFilter.toLowerCase())) ||
+          (a.intention && a.intention.toLowerCase().includes(catFilter.toLowerCase()))
+      );
+    }
+    renderListing(currentAnnonces);
   }
-}
+});
 </script>
 </body>
 </html>
