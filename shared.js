@@ -227,40 +227,7 @@ async function bootApp() {
   }
 }
 
-/* ── CURSOR ── */
-function initCursor() {
-  const dot = document.getElementById('cur-dot');
-  const ring = document.getElementById('cur-ring');
-  if (!dot || !ring) return;
-  let mx = 0,
-    my = 0,
-    rx = 0,
-    ry = 0;
-  document.addEventListener('mousemove', (e) => {
-    mx = e.clientX;
-    my = e.clientY;
-    dot.style.transform = `translate(${mx - 2.5}px,${my - 2.5}px)`;
-  });
-  (function loop() {
-    rx += (mx - rx) * 0.12;
-    ry += (my - ry) * 0.12;
-    ring.style.transform = `translate(${rx - 14}px,${ry - 14}px)`;
-    requestAnimationFrame(loop);
-  })();
-  attachCursorHover(document);
-}
-
-function attachCursorHover(root) {
-  root.querySelectorAll('a,button,.pc,.size-btn,.qty-btn,.pay-opt,.ship-opt,.acc-head,[data-hover]').forEach((el) => {
-    el.addEventListener('mouseenter', () => document.body.classList.add('cur-hover'));
-    el.addEventListener('mouseleave', () => document.body.classList.remove('cur-hover'));
-  });
-  root.querySelectorAll('input,textarea,select').forEach((el) => {
-    el.addEventListener('mouseenter', () => document.body.classList.add('cur-text'));
-    el.addEventListener('mouseleave', () => document.body.classList.remove('cur-text'));
-  });
-}
-
+/* ── NAVIGATION ── */
 /* ── NAV ── */
 function initNav() {
   const nav = document.querySelector('.main-nav');
@@ -528,8 +495,6 @@ function buildFooterHTML() {
 
 function initShared() {
   initAgeGate();
-  initCursor();
   initNav();
   initReveal();
-  attachCursorHover(document);
 }

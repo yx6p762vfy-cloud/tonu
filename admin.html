@@ -69,7 +69,7 @@
 .mod-actions button{
   flex:1;border:none;border-bottom:1px solid var(--black4);
   font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
-  cursor:none;transition:all .2s;padding:0 20px;
+  cursor:pointer;transition:all .2s;padding:0 20px;
 }
 .mod-actions button:last-child{border-bottom:none}
 .mod-btn-approve{background:transparent;color:var(--green-ok)}
@@ -206,7 +206,6 @@ async function loadPending() {
           <button class="mod-btn-reject" onclick="reject('${a.id}')"><span>✕ Refuser</span></button>
         </div>
       </div>`).join('');
-    attachCursorHover(list);
   } catch (e) {
     list.innerHTML = `<div class="mod-empty"><div>Erreur : ${e.message}</div></div>`;
     showToast(e.message, 'error');
