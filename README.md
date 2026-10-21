@@ -54,7 +54,7 @@ npm run dev     # rechargement automatique
 - Modération : http://localhost:3000/admin.html
 - Santé de l'API : http://localhost:3000/api/health
 
-Au premier démarrage, si aucun administrateur n'existe, un compte admin est créé avec `ADMIN_EMAIL` / `ADMIN_PASSWORD`. En développement, `SEED_DEMO` vaut `true` par défaut ; les annonces de démonstration ne sont jamais créées en production.
+Au premier démarrage, si aucun administrateur n'existe et que `ADMIN_EMAIL` / `ADMIN_PASSWORD` sont renseignés, ce compte est créé automatiquement. Modifier ces variables ensuite ne change pas le mot de passe d'un admin existant : utilisez `npm run user:reset-password`. En développement, `SEED_DEMO` vaut `true` par défaut ; les annonces de démonstration ne sont jamais créées en production.
 
 ## Variables d'environnement
 
@@ -144,9 +144,35 @@ Aucune vraie clé Stripe ni aucun fichier `.env` n'est utilisé par les tests.
 
 ## Déploiement
 
-### Option 1 — Docker (recommandé)
+### Option 1 — Render (Docker + disque persistant)
 
-Le `Dockerfile` utilise Node 24, un utilisateur non-root et un healthcheck. `docker-compose.yml` persiste la base et les photos dans des volumes nommés.
+`render.yaml` décrit un service Docker avec un disque persistant de 1 Go. La base SQLite et les photos vivent dans `/var/data`, en dehors du conteneur : elles survivent aux redéploiements. Contrairement à Vercel, Render exécute le serveur Express, donc l'API, l'authentification et Stripe fonctionnent.
+
+1. Poussez le dépôt sur GitHub, puis dans Render : **New → Blueprint**, sélectionnez le dépôt et appliquez `render.yaml`.
+2. Renseignez les variables secrètes demandées :
+   - `BASE_URL` : URL HTTPS finale, sans slash final (ex. `https://tonu-prive.onrender.com` ou votre domaine) ;
+   - `ADMIN_EMAIL` et `ADMIN_PASSWORD` (12 caractères minimum) : le compte admin est créé au premier démarrage s'il n'en existe aucun ;
+   - `SUPPORT_EMAIL`, `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`, `STRIPE_WEBHOOK_SECRET`.
+
+   `JWT_SECRET` est généré par Render. `DATA_DIR`, `UPLOADS_DIR` et `TRUST_PROXY` sont déjà définis.
+3. Le conteneur démarre en root uniquement pour corriger les droits du disque, puis l'application tourne avec l'utilisateur `node`.
+4. Ajoutez le domaine dans **Settings → Custom Domains**, mettez `BASE_URL` à jour, puis redéployez.
+5. Créez le webhook Stripe vers `https://votre-domaine/api/stripe/webhook` avec les événements listés plus bas.
+
+Un disque Render nécessite une offre payante ; l'offre gratuite ne conserve pas SQLite ni les photos. Le plan `0.5c-512mb` suffit pour démarrer, augmentez la RAM si vous traitez beaucoup de photos en parallèle. Render crée un snapshot du disque toutes les 24 h, conservé au moins 7 jours, et permet de copier des fichiers via SCP.
+
+Commandes dans le **Shell** Render (toujours en tant que `node`) :
+
+```bash
+gosu node npm run user:reset-password -- membre@exemple.com 'NouveauMotDePasse!'
+gosu node npm run admin:create -- admin@exemple.com 'MotDePasseSolide!'
+```
+
+> **Vercel** ne peut pas héberger cette application telle quelle : `public/` y est servi, mais toutes les routes `/api/*` renvoient 404 (pas de serveur Express, de SQLite ni d'uploads). Utilisez l'URL Render ou votre domaine comme adresse du site.
+
+### Option 2 — Docker auto-hébergé
+
+Le `Dockerfile` utilise Node 24 et un healthcheck ; l'application tourne avec l'utilisateur `node`, après correction des droits du volume par l'entrypoint. `docker-compose.yml` persiste la base et les photos dans des volumes nommés.
 
 ```bash
 cp .env.example .env
@@ -186,11 +212,11 @@ Mettez `TRUST_PROXY=true` dans `.env` derrière un proxy. Si le port 3000 est d�
 Commandes dans le conteneur :
 
 ```bash
-docker compose exec app npm run admin:create -- admin@votre-domaine.com 'MotDePasseSolide!' 'Admin'
-docker compose exec app npm run user:reset-password -- membre@exemple.com 'NouveauMotDePasse!'
+docker compose exec --user node app npm run admin:create -- admin@votre-domaine.com 'MotDePasseSolide!' 'Admin'
+docker compose exec --user node app npm run user:reset-password -- membre@exemple.com 'NouveauMotDePasse!'
 ```
 
-### Option 2 — VPS sans Docker
+### Option 3 — VPS sans Docker
 
 ```bash
 npm ci --omit=dev
@@ -221,11 +247,14 @@ SQLite est en mode WAL : ne copiez pas `app.db` seul pendant que l'application t
 node -e "const D=require('better-sqlite3');const d=new D('data/app.db');d.backup('backup-app.db').then(()=>d.close())"
 
 # Docker
-docker compose exec app node -e "const D=require('better-sqlite3');const d=new D('/app/data/app.db');d.backup('/app/data/backup-app.db').then(()=>d.close())"
+docker compose exec --user node app node -e "const D=require('better-sqlite3');const d=new D('/app/data/app.db');d.backup('/app/data/backup-app.db').then(()=>d.close())"
 docker compose cp app:/app/data/backup-app.db ./backup-app.db
+
+# Render (Shell du service)
+gosu node node -e "const D=require('better-sqlite3');const d=new D('/var/data/app.db');d.backup('/var/data/backup-app.db').then(()=>d.close())"
 ```
 
-Sauvegardez également `uploads/` (photos) ou les volumes `tonu-data` et `tonu-uploads`. Testez régulièrement une restauration sur un environnement séparé.
+Sauvegardez également `uploads/` (photos) ou les volumes `tonu-data` et `tonu-uploads`. Sur Render, le disque `/var/data` contient la base et les photos ; récupérez une copie via SCP ou Magic Wormhole. Testez régulièrement une restauration sur un environnement séparé.
 
 ## Sécurité et conformité
 
@@ -262,7 +291,9 @@ Points de vigilance opérateur :
 ├── uploads/           Photos traitées (créé au démarrage, ignoré par Git)
 ├── legacy/            Anciennes pages inutilisées, hors du dossier servi
 ├── Dockerfile
+├── docker-entrypoint.sh
 ├── docker-compose.yml
+├── render.yaml
 └── .env.example
 ```
 
