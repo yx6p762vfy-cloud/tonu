@@ -1,28 +1,29 @@
 const jwt = require('jsonwebtoken');
 const config = require('../config');
 const db = require('../db');
+const { asyncHandler } = require('../lib/http');
 
-function getUserById(id) {
-  return db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+async function getUserById(id) {
+  return db.get('SELECT * FROM users WHERE id = ?', [id]);
 }
 
-function readUser(req) {
+async function readUser(req) {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
   if (!token) return null;
   try {
     const payload = jwt.verify(token, config.jwtSecret);
-    return getUserById(payload.sub) || null;
+    return (await getUserById(payload.sub)) || null;
   } catch {
     return null;
   }
 }
 
-function authRequired(req, res, next) {
+const authRequired = asyncHandler(async (req, res, next) => {
   if (!req.headers.authorization?.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Authentification requise' });
   }
-  const user = readUser(req);
+  const user = await readUser(req);
   if (!user) {
     return res.status(401).json({ error: 'Session expirée ou invalide' });
   }
@@ -31,13 +32,13 @@ function authRequired(req, res, next) {
   }
   req.user = user;
   next();
-}
+});
 
-function authOptional(req, _res, next) {
-  const user = readUser(req);
+const authOptional = asyncHandler(async (req, _res, next) => {
+  const user = await readUser(req);
   req.user = user && !user.banned ? user : null;
   next();
-}
+});
 
 function requireRole(...roles) {
   return (req, res, next) => {

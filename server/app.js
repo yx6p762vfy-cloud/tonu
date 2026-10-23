@@ -25,7 +25,7 @@ app.use(
         scriptSrcAttr: ["'unsafe-inline'"],
         styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
         fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
-        imgSrc: ["'self'", 'data:', 'blob:'],
+        imgSrc: ["'self'", 'data:', 'blob:', ...(config.supabaseUrl ? [config.supabaseUrl] : [])],
         connectSrc: ["'self'"],
         frameAncestors: ["'none'"],
         objectSrc: ["'none'"],
@@ -68,18 +68,6 @@ app.use('/api', publicRoutes);
 app.use('/api', (_req, res) => {
   res.status(404).json({ error: 'Route API introuvable' });
 });
-
-app.use(
-  '/uploads',
-  express.static(config.uploadsDir, {
-    maxAge: '365d',
-    immutable: true,
-    dotfiles: 'deny',
-    setHeaders(res) {
-      res.setHeader('X-Content-Type-Options', 'nosniff');
-    },
-  })
-);
 
 app.use(
   express.static(config.publicDir, {

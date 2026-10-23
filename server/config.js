@@ -1,8 +1,5 @@
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 
-const path = require('path');
-
-const rootDir = path.join(__dirname, '..');
 const nodeEnv = process.env.NODE_ENV || 'development';
 const isProduction = nodeEnv === 'production';
 
@@ -19,6 +16,8 @@ function int(value, fallback) {
 const jwtSecret = process.env.JWT_SECRET || '';
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY || '';
 const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
+const supabaseUrl = (process.env.SUPABASE_URL || '').trim().replace(/\/$/, '');
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 const config = {
   nodeEnv,
@@ -30,14 +29,16 @@ const config = {
   jwtExpiresIn: '7d',
   adminEmail: (process.env.ADMIN_EMAIL || '').trim().toLowerCase(),
   adminPassword: process.env.ADMIN_PASSWORD || '',
+  databaseUrl: (process.env.DATABASE_URL || '').trim(),
+  supabaseUrl,
+  supabaseServiceKey,
+  storageBucket: (process.env.SUPABASE_BUCKET || 'photos').trim(),
   stripeSecretKey,
   stripeWebhookSecret,
   stripePriceId: process.env.STRIPE_PRICE_ID || '',
   supportEmail: (process.env.SUPPORT_EMAIL || 'contact@example.com').trim(),
-  rootDir,
-  publicDir: path.join(rootDir, 'public'),
-  dataDir: path.resolve(process.env.DATA_DIR || path.join(rootDir, 'data')),
-  uploadsDir: path.resolve(process.env.UPLOADS_DIR || path.join(rootDir, 'uploads')),
+  rootDir: require('path').join(__dirname, '..'),
+  publicDir: require('path').join(__dirname, '..', 'public'),
   minAge: 18,
   maxPhotos: 3,
   maxUploadBytes: int(process.env.MAX_UPLOAD_BYTES, 8 * 1024 * 1024),
@@ -47,6 +48,10 @@ const config = {
   termsUpdatedAt: '2026-10-21',
   allowedRedirects: ['publier.html', 'premium.html', 'compte.html', 'product.html'],
 };
+
+function storageConfigured() {
+  return !!(config.supabaseUrl && config.supabaseServiceKey && config.storageBucket);
+}
 
 function assertConfig() {
   if (!isProduction) return;
@@ -68,7 +73,17 @@ function assertConfig() {
   if (config.adminPassword && !config.adminEmail) {
     throw new Error('ADMIN_EMAIL est requis lorsque ADMIN_PASSWORD est défini.');
   }
+  if (!config.databaseUrl) {
+    throw new Error('DATABASE_URL est requis en production (chaîne de connexion Postgres Supabase).');
+  }
+  if (!/^https:\/\//i.test(config.supabaseUrl)) {
+    throw new Error('SUPABASE_URL doit être une URL HTTPS en production.');
+  }
+  if (!supabaseServiceKey) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY est requis en production (stockage des photos).');
+  }
 }
 
 module.exports = config;
+module.exports.storageConfigured = storageConfigured;
 module.exports.assertConfig = assertConfig;

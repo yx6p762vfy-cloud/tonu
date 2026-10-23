@@ -14,7 +14,8 @@ Le fonctionnement est volontairement simple :
 ## Stack
 
 - **Node.js 20+** (recommandé : 22 ou 24), Express 4
-- **SQLite** (better-sqlite3, mode WAL), migrations automatiques au démarrage
+- **PostgreSQL** managé (Supabase, offre gratuite), migrations automatiques au démarrage ; en développement sans `DATABASE_URL`, un Postgres embarqué (PGlite) est utilisé dans `./data/pglite`
+- **Supabase Storage** : photos des annonces (bucket public), rien n'est écrit sur le disque local
 - **Stripe** : abonnement récurrent, Checkout, portail client, webhooks signés et idempotents
 - **Sharp** : re-encodage des photos en JPEG, suppression des métadonnées EXIF/GPS, redimensionnement
 - Front statique servi uniquement depuis `public/` — le code serveur, la base et les scripts ne sont jamais exposés
@@ -35,7 +36,12 @@ Renseignez au minimum dans `.env` :
 JWT_SECRET=<32 caractères aléatoires minimum>
 ADMIN_EMAIL=admin@votre-domaine.com
 ADMIN_PASSWORD=<12 caractères minimum>
+# Requis pour publier des photos (projet Supabase gratuit)
+SUPABASE_URL=https://xxxx.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=<clé service_role>
 ```
+
+Sans `DATABASE_URL`, un Postgres embarqué (PGlite) est créé dans `./data/pglite` — pratique pour tester, mais les données sont locales. Publier une photo exige une configuration Supabase Storage ; la consultation, l'inscription et les commentaires fonctionnent sans.
 
 Générer un secret JWT :
 
@@ -65,8 +71,10 @@ Au premier démarrage, si aucun administrateur n'existe et que `ADMIN_EMAIL` / `
 | `BASE_URL` | `http://localhost:3000` | URL publique **HTTPS**, sans slash final. Obligatoire pour Stripe |
 | `TRUST_PROXY` | `false` | `true` derrière nginx, Caddy, Cloudflare… |
 | `JWT_SECRET` | — | Secret de signature, 32 caractères minimum en production |
-| `DATA_DIR` | `./data` | Base SQLite et sauvegardes |
-| `UPLOADS_DIR` | `./uploads` | Photos traitées, dossier inscriptible |
+| `DATABASE_URL` | — | URI Postgres (Supabase, pooler de session). Absent en dev : Postgres embarqué PGlite |
+| `SUPABASE_URL` | — | URL du projet Supabase (`https://xxxx.supabase.co`) |
+| `SUPABASE_SERVICE_ROLE_KEY` | — | Clé `service_role` (secrète, jamais côté navigateur) |
+| `SUPABASE_BUCKET` | `photos` | Bucket public des photos, créé au démarrage s'il manque |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | — | Création du premier administrateur ; mot de passe de 12 caractères min. en production |
 | `SUPPORT_EMAIL` | `contact@example.com` | Adresse affichée sur les pages légales et de contact |
 | `SEED_DEMO` | `true` en dev | À laisser `false` en production |
@@ -138,41 +146,47 @@ Les routes protégées attendent un en-tête `Authorization: Bearer <token>`.
 npm test
 ```
 
-La suite démarre un serveur isolé sur un port libre, avec des dossiers temporaires, et couvre : en-têtes de sécurité et non-exposition des fichiers internes, inscriptions et doublons, sessions, filtres/recherche/pagination, commentaires, blocage de publication sans Premium, upload et suppression EXIF, visibilité privée des annonces en attente, modération, refus motivés, rôles, suspensions, signalements, export RGPD, suppression de compte et dégradation propre sans Stripe.
+La suite démarre un serveur isolé sur un port libre, avec un Postgres embarqué en mémoire (PGlite exposé en TCP) et un serveur Storage Supabase factice, et couvre : en-têtes de sécurité et non-exposition des fichiers internes, inscriptions et doublons, sessions, filtres/recherche/pagination, commentaires, blocage de publication sans Premium, upload vers Storage et suppression EXIF, visibilité privée des annonces en attente, modération, refus motivés, rôles, suspensions, signalements, export RGPD, suppression de compte et dégradation propre sans Stripe.
 
 Aucune vraie clé Stripe ni aucun fichier `.env` n'est utilisé par les tests.
 
 ## Déploiement
 
-### Option 1 — Render (Docker + disque persistant)
+### Option 1 — Render (gratuit) + Supabase (gratuit) — recommandé
 
-`render.yaml` décrit un service Docker avec un disque persistant de 1 Go. La base SQLite et les photos vivent dans `/var/data`, en dehors du conteneur : elles survivent aux redéploiements. Contrairement à Vercel, Render exécute le serveur Express, donc l'API, l'authentification et Stripe fonctionnent.
+L'application est **sans état** : la base vit dans Supabase (Postgres), les photos dans Supabase Storage. Le conteneur Render n'a donc besoin d'aucun disque — le plan **free** suffit. Contrairement à Vercel, Render exécute le serveur Express, donc l'API, l'authentification et Stripe fonctionnent.
 
-1. Poussez le dépôt sur GitHub, puis dans Render : **New → Blueprint**, sélectionnez le dépôt et appliquez `render.yaml`.
-2. Renseignez les variables secrètes demandées :
-   - `BASE_URL` : URL HTTPS finale, sans slash final (ex. `https://tonu-prive.onrender.com` ou votre domaine) ;
-   - `ADMIN_EMAIL` et `ADMIN_PASSWORD` (12 caractères minimum) : le compte admin est créé au premier démarrage s'il n'en existe aucun ;
-   - `SUPPORT_EMAIL`, `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`, `STRIPE_WEBHOOK_SECRET`.
+**1. Créez le projet Supabase (gratuit)** sur [supabase.com](https://supabase.com), puis récupérez :
 
-   `JWT_SECRET` est généré par Render. `DATA_DIR`, `UPLOADS_DIR` et `TRUST_PROXY` sont déjà définis.
-3. Le conteneur démarre en root uniquement pour corriger les droits du disque, puis l'application tourne avec l'utilisateur `node`.
-4. Ajoutez le domaine dans **Settings → Custom Domains**, mettez `BASE_URL` à jour, puis redéployez.
-5. Créez le webhook Stripe vers `https://votre-domaine/api/stripe/webhook` avec les événements listés plus bas.
+- `DATABASE_URL` : Project Settings → Database → Connection string → URI, onglet **Session pooler** (port 5432). Remplacez `[YOUR-PASSWORD]` par le mot de passe de la base ;
+- `SUPABASE_URL` : Project Settings → API → Project URL ;
+- `SUPABASE_SERVICE_ROLE_KEY` : Project Settings → API → `service_role` (secrète).
 
-Un disque Render nécessite une offre payante ; l'offre gratuite ne conserve pas SQLite ni les photos. Le plan `0.5c-512mb` suffit pour démarrer, augmentez la RAM si vous traitez beaucoup de photos en parallèle. Render crée un snapshot du disque toutes les 24 h, conservé au moins 7 jours, et permet de copier des fichiers via SCP.
+Le bucket `photos` est créé automatiquement au premier démarrage. Les migrations de tables s'exécutent aussi au démarrage — rien à faire dans l'éditeur SQL.
 
-Commandes dans le **Shell** Render (toujours en tant que `node`) :
+**2. Déployez sur Render** : poussez le dépôt sur GitHub, puis dans Render : **New → Blueprint**, sélectionnez le dépôt et appliquez `render.yaml` (service Docker, plan free, healthcheck `/api/health`). Renseignez les variables secrètes demandées :
+
+- `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` ;
+- `BASE_URL` : URL HTTPS finale, sans slash final (ex. `https://tonu-prive.onrender.com` ou votre domaine) ;
+- `ADMIN_EMAIL` et `ADMIN_PASSWORD` (12 caractères minimum) : le compte admin est créé au premier démarrage ;
+- `SUPPORT_EMAIL`, `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`, `STRIPE_WEBHOOK_SECRET`.
+
+`JWT_SECRET` est généré par Render ; `TRUST_PROXY` et `SUPABASE_BUCKET` sont déjà définis.
+
+**3. Finalisez** : ajoutez le domaine dans **Settings → Custom Domains**, mettez `BASE_URL` à jour, redéployez, puis créez le webhook Stripe vers `https://votre-domaine/api/stripe/webhook`.
+
+Limites de l'offre gratuite : Render suspend le service après 15 min d'inactivité (réveil en ~30 s à la requête suivante) ; Supabase met le projet en pause après 7 jours sans activité (réactivez depuis le dashboard) ; quotas 500 Mo de base, 1 Go de stockage, 5 Go de trafic sortant/mois. Scripts dans le **Shell** Render :
 
 ```bash
-gosu node npm run user:reset-password -- membre@exemple.com 'NouveauMotDePasse!'
-gosu node npm run admin:create -- admin@exemple.com 'MotDePasseSolide!'
+npm run user:reset-password -- membre@exemple.com 'NouveauMotDePasse!'
+npm run admin:create -- admin@exemple.com 'MotDePasseSolide!'
 ```
 
-> **Vercel** ne peut pas héberger cette application telle quelle : `public/` y est servi, mais toutes les routes `/api/*` renvoient 404 (pas de serveur Express, de SQLite ni d'uploads). Utilisez l'URL Render ou votre domaine comme adresse du site.
+> **Vercel** ne peut pas héberger cette application telle quelle : `public/` y est servi, mais toutes les routes `/api/*` renvoient 404 (pas de serveur Express). Utilisez l'URL Render ou votre domaine comme adresse du site.
 
 ### Option 2 — Docker auto-hébergé
 
-Le `Dockerfile` utilise Node 24 et un healthcheck ; l'application tourne avec l'utilisateur `node`, après correction des droits du volume par l'entrypoint. `docker-compose.yml` persiste la base et les photos dans des volumes nommés.
+Le `Dockerfile` utilise Node 24 et un healthcheck ; l'application tourne avec l'utilisateur `node`. Renseignez `DATABASE_URL` et les variables Supabase dans `.env` — aucun volume n'est nécessaire puisque ni la base ni les photos ne sont locales.
 
 ```bash
 cp .env.example .env
@@ -229,32 +243,23 @@ Gardez le processus sous PM2 ou systemd, avec redémarrage automatique, et place
 ### Liste de contrôle avant ouverture
 
 - [ ] `NODE_ENV=production`, `BASE_URL` en HTTPS, `JWT_SECRET` aléatoire de 32+ caractères
+- [ ] `DATABASE_URL` (pooler de session), `SUPABASE_URL` et `SUPABASE_SERVICE_ROLE_KEY` renseignés ; bucket créé au démarrage
 - [ ] Mot de passe admin unique de 12+ caractères ; `SUPPORT_EMAIL` réel
 - [ ] `SEED_DEMO=false`
 - [ ] Clés Stripe **live**, webhook signé et testé, portail client activé
 - [ ] Identité de l'éditeur et coordonnées de l'hébergeur complétées dans `public/mentions-legales.html`
 - [ ] Pages CGU, confidentialité, sécurité et mentions légales relues par un conseil juridique
-- [ ] Sauvegardes automatiques de `data/` et `uploads/` testées (restauration comprise)
+- [ ] Sauvegarde Supabase testée (restauration comprise)
 - [ ] Reverse proxy TLS, pare-feu, accès SSH restreint, journaux et supervision en place
 - [ ] Parcours complet vérifié : inscription, commentaire, paiement test, webhook, publication, modération
 
 ## Sauvegardes et maintenance
 
-SQLite est en mode WAL : ne copiez pas `app.db` seul pendant que l'application tourne. Utilisez la sauvegarde en ligne :
+La base et les photos vivent dans Supabase — aucun fichier local à sauvegarder.
 
-```bash
-# Hôte, hors Docker
-node -e "const D=require('better-sqlite3');const d=new D('data/app.db');d.backup('backup-app.db').then(()=>d.close())"
-
-# Docker
-docker compose exec --user node app node -e "const D=require('better-sqlite3');const d=new D('/app/data/app.db');d.backup('/app/data/backup-app.db').then(()=>d.close())"
-docker compose cp app:/app/data/backup-app.db ./backup-app.db
-
-# Render (Shell du service)
-gosu node node -e "const D=require('better-sqlite3');const d=new D('/var/data/app.db');d.backup('/var/data/backup-app.db').then(()=>d.close())"
-```
-
-Sauvegardez également `uploads/` (photos) ou les volumes `tonu-data` et `tonu-uploads`. Sur Render, le disque `/var/data` contient la base et les photos ; récupérez une copie via SCP ou Magic Wormhole. Testez régulièrement une restauration sur un environnement séparé.
+- **Base** : l'offre gratuite Supabase n'inclut pas de sauvegardes automatiques. Exportez régulièrement : Dashboard → Database → Backups (selon offre) ou en ligne de commande `pg_dump "<DATABASE_URL>" -F c -f backup.dump`. Restauration : `pg_restore -d "<DATABASE_URL>" backup.dump`.
+- **Photos** : bucket Storage. Export possible via la CLI Supabase (`supabase storage ls/download`) ou en dupliquant les objets via l'API. Les URL publiques sont immuables, une suppression de projet est donc définitive.
+- Testez régulièrement une restauration sur un projet Supabase séparé.
 
 ## Sécurité et conformité
 
@@ -268,14 +273,14 @@ Mesures en place :
 - Annonces en attente et refusées invisibles du public (sauf auteur et modération)
 - Webhooks Stripe signés, événements idempotents, aucune confiance accordée au retour navigateur
 - Export JSON des données et suppression définitive du compte depuis l'espace membre (RGPD)
-- Dossiers `data/`, `uploads/`, `.env` et `legacy/` exclus de Git ; code serveur non servi par le front
+- `.env` et `data/` (Postgres embarqué de dev) exclus de Git ; code serveur non servi par le front ; la clé `service_role` ne quitte jamais le serveur
 
 Points de vigilance opérateur :
 
 - **Site réservé aux adultes** : vérifiez les obligations de votre juridiction en matière de preuve d'âge, de modération, de signalement de contenus illicites et de conservation. La porte d'entrée 18+ est déclarative et ne constitue pas une vérification d'identité.
 - Les pages légales sont des modèles à faire valider ; l'identité de l'éditeur et de l'hébergeur doit être complétée avant mise en ligne.
 - Aucun email transactionnel n'est envoyé (vérification d'adresse, mot de passe oublié). Utilisez `npm run user:reset-password` ou intégrez un fournisseur SMTP avant d'ouvrir à grande échelle.
-- L'architecture est mono-instance : SQLite et fichiers locaux ne permettent pas de répartir la charge sur plusieurs serveurs sans base et stockage partagés.
+- L'application est sans état et peut être répliquée, mais respectez les limites du pool de connexions Postgres (5 par instance) et les quotas de l'offre gratuite Supabase.
 - La modération est humaine et doit être organisée (délais de traitement, escalade des contenus graves).
 - Faites vérifier la conformité fiscale, commerciale et RGPD de votre activité avant exploitation.
 
@@ -287,11 +292,9 @@ Points de vigilance opérateur :
 ├── public/            Front statique servi au navigateur
 ├── scripts/           Création admin et réinitialisation de mot de passe
 ├── test/              Tests unitaires et d'intégration (node:test)
-├── data/              Base SQLite (créée au démarrage, ignorée par Git)
-├── uploads/           Photos traitées (créé au démarrage, ignoré par Git)
+├── data/pglite/       Postgres embarqué de développement uniquement (ignoré par Git)
 ├── legacy/            Anciennes pages inutilisées, hors du dossier servi
 ├── Dockerfile
-├── docker-entrypoint.sh
 ├── docker-compose.yml
 ├── render.yaml
 └── .env.example

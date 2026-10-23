@@ -18,15 +18,26 @@ if (password.length < 8) {
   process.exit(1);
 }
 
-const user = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
-if (!user) {
-  console.error('Aucun compte trouvé avec cet email.');
-  process.exit(1);
+async function main() {
+  await db.init();
+
+  const user = await db.get('SELECT id FROM users WHERE LOWER(email) = LOWER(?)', [email]);
+  if (!user) {
+    console.error('Aucun compte trouvé avec cet email.');
+    process.exitCode = 1;
+    return;
+  }
+
+  await db.run(
+    'UPDATE users SET password_hash = ?, updated_at = now() WHERE id = ?',
+    [bcrypt.hashSync(password, 12), user.id]
+  );
+  console.log(`Mot de passe réinitialisé pour : ${email}`);
 }
 
-db.prepare("UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?").run(
-  bcrypt.hashSync(password, 12),
-  user.id
-);
-console.log(`Mot de passe réinitialisé pour : ${email}`);
-db.close();
+main()
+  .catch((err) => {
+    console.error('Erreur :', err.message);
+    process.exitCode = 1;
+  })
+  .finally(() => db.close());

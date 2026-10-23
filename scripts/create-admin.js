@@ -24,24 +24,35 @@ if (pseudo.length < 3 || pseudo.length > 32) {
   process.exit(1);
 }
 
-const existing = db.prepare('SELECT id, role FROM users WHERE email = ?').get(email);
-if (existing) {
-  db.prepare(
-    "UPDATE users SET role = 'admin', password_hash = ?, banned = 0, updated_at = datetime('now') WHERE id = ?"
-  ).run(bcrypt.hashSync(password, 12), existing.id);
-  console.log(`Compte existant promu administrateur : ${email}`);
-} else {
-  const duplicatePseudo = db
-    .prepare('SELECT id FROM users WHERE pseudo = ? COLLATE NOCASE')
-    .get(pseudo);
-  if (duplicatePseudo) {
-    console.error('Ce pseudo est déjà utilisé. Choisissez-en un autre.');
-    process.exit(1);
+async function main() {
+  await db.init();
+
+  const existing = await db.get('SELECT id, role FROM users WHERE LOWER(email) = LOWER(?)', [email]);
+  if (existing) {
+    await db.run(
+      "UPDATE users SET role = 'admin', password_hash = ?, banned = FALSE, updated_at = now() WHERE id = ?",
+      [bcrypt.hashSync(password, 12), existing.id]
+    );
+    console.log(`Compte existant promu administrateur : ${email}`);
+  } else {
+    const duplicatePseudo = await db.get('SELECT id FROM users WHERE LOWER(pseudo) = LOWER(?)', [pseudo]);
+    if (duplicatePseudo) {
+      console.error('Ce pseudo est déjà utilisé. Choisissez-en un autre.');
+      process.exitCode = 1;
+      return;
+    }
+    await db.run(
+      `INSERT INTO users (id, email, password_hash, pseudo, age, role, terms_accepted_at, terms_version)
+       VALUES (?, ?, ?, ?, 30, 'admin', now(), '1.0')`,
+      [crypto.randomUUID(), email, bcrypt.hashSync(password, 12), pseudo]
+    );
+    console.log(`Administrateur créé : ${email}`);
   }
-  db.prepare(
-    `INSERT INTO users (id, email, password_hash, pseudo, age, role, terms_accepted_at, terms_version)
-     VALUES (?, ?, ?, ?, 30, 'admin', datetime('now'), '1.0')`
-  ).run(crypto.randomUUID(), email, bcrypt.hashSync(password, 12), pseudo);
-  console.log(`Administrateur créé : ${email}`);
 }
-db.close();
+
+main()
+  .catch((err) => {
+    console.error('Erreur :', err.message);
+    process.exitCode = 1;
+  })
+  .finally(() => db.close());

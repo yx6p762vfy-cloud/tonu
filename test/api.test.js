@@ -1,24 +1,30 @@
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const { spawn } = require('node:child_process');
-const fs = require('node:fs');
-const fsp = require('node:fs/promises');
+const http = require('node:http');
 const net = require('node:net');
-const os = require('node:os');
 const path = require('node:path');
 const sharp = require('sharp');
-const Database = require('better-sqlite3');
+const { PGlite } = require('@electric-sql/pglite');
+const { PGLiteSocketServer } = require('@electric-sql/pglite-socket');
+const { Client } = require('pg');
 
 const ROOT = path.join(__dirname, '..');
 const ADMIN_EMAIL = 'admin@test.local';
 const ADMIN_PASSWORD = 'AdminTestPassword123!';
+const SERVICE_KEY = 'test-supabase-service-key';
 
 let child = null;
 let serverLog = '';
 let baseUrl = '';
-let tmpDir = '';
-let uploadsDir = '';
+
+let pglite = null;
+let pgliteServer = null;
 let db = null;
+
+let storageServer = null;
+let storageUrl = '';
+const storageStore = new Map();
 
 const accounts = {};
 let adminToken = '';
@@ -40,7 +46,7 @@ function getFreePort() {
   });
 }
 
-async function waitForHealth(timeoutMs = 20_000) {
+async function waitForHealth(timeoutMs = 30_000) {
   const startedAt = Date.now();
   while (Date.now() - startedAt < timeoutMs) {
     if (child.exitCode !== null) {
@@ -141,10 +147,104 @@ function adForm(jpeg, overrides = {}) {
   return form;
 }
 
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on('data', (chunk) => chunks.push(chunk));
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
+  });
+}
+
+function sendJson(res, status, payload) {
+  res.writeHead(status, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(payload));
+}
+
+async function handleStorage(req, res) {
+  const url = new URL(req.url, 'http://localhost');
+  const parts = url.pathname.split('/').filter(Boolean);
+
+  // /storage/v1/bucket/photos  (GET = existence, POST = création)
+  if (parts[0] === 'storage' && parts[1] === 'v1' && parts[2] === 'bucket') {
+    if (req.method === 'GET') {
+      sendJson(res, 200, { name: 'photos', public: true });
+      return;
+    }
+    if (req.method === 'POST') {
+      await readBody(req);
+      sendJson(res, 200, { name: 'photos' });
+      return;
+    }
+  }
+
+  // /storage/v1/object/public/photos/<clé>  (GET public)
+  if (
+    parts[0] === 'storage' &&
+    parts[1] === 'v1' &&
+    parts[2] === 'object' &&
+    parts[3] === 'public' &&
+    parts[4] === 'photos'
+  ) {
+    const key = parts.slice(5).join('/');
+    const stored = storageStore.get(key);
+    if (!stored) {
+      sendJson(res, 404, { error: 'not found' });
+      return;
+    }
+    res.writeHead(200, {
+      'Content-Type': 'image/jpeg',
+      'Cache-Control': 'public, max-age=31536000, immutable',
+    });
+    res.end(stored);
+    return;
+  }
+
+  // /storage/v1/object/photos/<clé>  (POST = upload, DELETE = suppression, clé de service exigée)
+  if (parts[0] === 'storage' && parts[1] === 'v1' && parts[2] === 'object' && parts[3] === 'photos') {
+    const key = parts.slice(4).join('/');
+    if (req.headers.authorization !== `Bearer ${SERVICE_KEY}`) {
+      sendJson(res, 401, { error: 'service key requise' });
+      return;
+    }
+    if (req.method === 'POST') {
+      const buffer = await readBody(req);
+      storageStore.set(key, buffer);
+      sendJson(res, 200, { key });
+      return;
+    }
+    if (req.method === 'DELETE') {
+      await readBody(req);
+      storageStore.delete(key);
+      sendJson(res, 200, {});
+      return;
+    }
+  }
+
+  sendJson(res, 404, { error: 'route storage inconnue' });
+}
+
 before(async () => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tonu-api-test-'));
-  const dataDir = path.join(tmpDir, 'data');
-  uploadsDir = path.join(tmpDir, 'uploads');
+  pglite = new PGlite();
+  pgliteServer = new PGLiteSocketServer({
+    db: pglite,
+    port: 0,
+    host: '127.0.0.1',
+    maxConnections: 8,
+  });
+  await pgliteServer.start();
+  // getServerConn() renvoie « host:port » sous forme de chaîne.
+  const dbConn = pgliteServer.getServerConn();
+  const dbPort = Number(dbConn.slice(dbConn.lastIndexOf(':') + 1));
+
+  storageServer = http.createServer((req, res) => {
+    handleStorage(req, res).catch(() => {
+      sendJson(res, 500, { error: 'storage interne' });
+    });
+  });
+  await new Promise((resolve) => storageServer.listen(0, '127.0.0.1', resolve));
+  storageUrl = `http://127.0.0.1:${storageServer.address().port}`;
+
   const port = await getFreePort();
   baseUrl = `http://127.0.0.1:${port}`;
 
@@ -155,8 +255,10 @@ before(async () => {
     BASE_URL: baseUrl,
     JWT_SECRET: 'test-jwt-secret-0123456789abcdef0123456789abcdef',
     TRUST_PROXY: 'false',
-    DATA_DIR: dataDir,
-    UPLOADS_DIR: uploadsDir,
+    DATABASE_URL: `postgres://postgres:postgres@127.0.0.1:${dbPort}/postgres`,
+    SUPABASE_URL: storageUrl,
+    SUPABASE_SERVICE_ROLE_KEY: SERVICE_KEY,
+    SUPABASE_BUCKET: 'photos',
     ADMIN_EMAIL,
     ADMIN_PASSWORD,
     SUPPORT_EMAIL: 'support@test.local',
@@ -181,17 +283,17 @@ before(async () => {
 
   await waitForHealth();
 
-  db = new Database(path.join(dataDir, 'app.db'));
-  db.pragma('busy_timeout = 5000');
+  db = new Client({
+    host: '127.0.0.1',
+    port: dbPort,
+    user: 'postgres',
+    password: 'postgres',
+    database: 'postgres',
+  });
+  await db.connect();
 });
 
 after(async () => {
-  try {
-    db?.close();
-  } catch {
-    // ignore
-  }
-
   if (child && child.exitCode === null) {
     const exited = new Promise((resolve) => child.once('exit', resolve));
     child.kill('SIGTERM');
@@ -202,9 +304,22 @@ after(async () => {
     }
   }
 
-  if (tmpDir) {
-    await fsp.rm(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }).catch(() => {});
+  try {
+    await db?.end();
+  } catch {
+    // ignore
   }
+  try {
+    await pgliteServer?.stop();
+  } catch {
+    // ignore
+  }
+  try {
+    await pglite?.close();
+  } catch {
+    // ignore
+  }
+  storageServer?.close();
 });
 
 test('santé, en-têtes de sécurité et fichiers internes non exposés', async () => {
@@ -218,12 +333,15 @@ test('santé, en-têtes de sécurité et fichiers internes non exposés', async 
   assert.match(csp, /frame-ancestors 'none'/);
   assert.ok(health.headers.get('referrer-policy'));
   assert.match(health.headers.get('permissions-policy') || '', /camera=\(\)/);
+  const cspImgSrc = new RegExp(`img-src[^;]*${storageUrl.replace(/[:/]/g, (c) => `\\${c}`)}`);
+  assert.match(csp, cspImgSrc, 'la CSP autorise le domaine Storage configuré');
 
   for (const target of [
     '/server/config.js',
     '/server/db.js',
     '/package.json',
     '/data/app.db',
+    '/uploads/inexistant.jpg',
     '/scripts/create-admin.js',
     '/.env',
   ]) {
@@ -345,7 +463,7 @@ test('annonces publiques : filtres, recherche, pagination et détail', async () 
   expectStatus(list, 200, 'listing');
   assert.ok(list.json.annonces.length >= 6, 'les annonces de démonstration sont visibles');
   assert.ok(list.json.annonces.every((a) => a.status === 'approved'));
-  assert.ok(list.json.annonces.every((a) => a.image && /^\/(images|uploads)\//.test(a.image)));
+  assert.ok(list.json.annonces.every((a) => a.image && /^(\/images\/|https?:\/\/)/.test(a.image)));
   assert.equal(list.json.pagination.page, 1);
 
   const cat = await request('/api/annonces?cat=Rencontre');
@@ -454,10 +572,11 @@ test('publication : Premium requis, image traitée et EXIF supprimé', async () 
   expectError(gated, 402, /premium/i, 'publication sans abonnement');
 
   const until = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-  const granted = db
-    .prepare('UPDATE users SET premium_until = ? WHERE email = ?')
-    .run(until, accounts.user1.email);
-  assert.equal(granted.changes, 1, 'abonnement de test accordé');
+  const granted = await db.query('UPDATE users SET premium_until = $1 WHERE email = $2', [
+    until,
+    accounts.user1.email,
+  ]);
+  assert.equal(granted.rowCount, 1, 'abonnement de test accordé');
 
   const me = await request('/api/auth/me', { token: accounts.user1.token });
   assert.equal(me.json.user.hasPremium, true);
@@ -492,19 +611,20 @@ test('publication : Premium requis, image traitée et EXIF supprimé', async () 
   assert.equal(created.json.annonce.photos.length, 1);
 
   const photoUrl = created.json.annonce.photos[0];
-  assert.match(photoUrl, /^\/uploads\/[0-9a-f-]+\.jpg$/i, 'URL de photo relative');
-  const photoPath = path.join(uploadsDir, path.basename(photoUrl));
-  assert.ok(fs.existsSync(photoPath), 'le fichier traité existe sur le disque');
+  assert.ok(
+    photoUrl.startsWith(`${storageUrl}/storage/v1/object/public/photos/`) && /[0-9a-f-]+\.jpg$/i.test(photoUrl),
+    'URL de photo pointant vers Supabase Storage'
+  );
 
-  const meta = await sharp(photoPath).metadata();
+  const photoRes = await fetch(photoUrl);
+  expectStatus({ status: photoRes.status, text: '' }, 200, 'service de la photo');
+  assert.match(photoRes.headers.get('content-type') || '', /image\/jpeg/);
+  assert.match(photoRes.headers.get('cache-control') || '', /immutable/);
+
+  const meta = await sharp(Buffer.from(await photoRes.arrayBuffer())).metadata();
   assert.equal(meta.format, 'jpeg');
   assert.ok(meta.width <= 1600 && meta.height <= 1600);
   assert.equal(meta.exif, undefined, 'les métadonnées EXIF doivent être supprimées');
-
-  const photoRes = await request(photoUrl);
-  expectStatus(photoRes, 200, 'service de la photo');
-  assert.match(photoRes.headers.get('content-type') || '', /image\/jpeg/);
-  assert.match(photoRes.headers.get('cache-control') || '', /immutable/);
 
   const publicList = await request(`/api/annonces?q=${encodeURIComponent('Rencontre test premium')}`);
   assert.ok(!publicList.json.annonces.some((a) => a.id === adId), 'une annonce en attente reste privée');
@@ -626,7 +746,7 @@ test('administration : modération, rôles, suspensions et protections', async (
   });
   expectStatus(finalApprove, 200, 'remise en ligne');
 
-  db.prepare("UPDATE users SET role = 'moderator' WHERE email = ?").run(accounts.user3.email);
+  await db.query("UPDATE users SET role = 'moderator' WHERE email = $1", [accounts.user3.email]);
   const modLogin = await login(accounts.user3.email, accounts.user3.password);
   expectStatus(modLogin, 200, 'connexion modérateur');
   assert.equal(modLogin.json.user.role, 'moderator');

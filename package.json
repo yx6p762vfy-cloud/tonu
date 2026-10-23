@@ -16,14 +16,18 @@
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
-    "better-sqlite3": "^11.10.0",
     "dotenv": "^16.6.1",
     "express": "^4.21.2",
     "express-rate-limit": "^8.7.1",
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.4.0",
+    "pg": "^8.23.1",
     "sharp": "^0.35.5",
     "stripe": "^18.4.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.11",
+    "@electric-sql/pglite-socket": "^0.2.14"
   }
 }

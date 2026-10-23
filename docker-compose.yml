@@ -8,14 +8,9 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      DATA_DIR: /app/data
-      UPLOADS_DIR: /app/uploads
     ports:
       # Exposé uniquement en local : placez un reverse proxy HTTPS devant.
       - "127.0.0.1:3000:3000"
-    volumes:
-      - tonu-data:/app/data
-      - tonu-uploads:/app/uploads
     security_opt:
       - no-new-privileges:true
     healthcheck:
@@ -24,7 +19,3 @@ services:
       timeout: 5s
       start_period: 30s
       retries: 3
-
-volumes:
-  tonu-data:
-  tonu-uploads:

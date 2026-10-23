@@ -3,6 +3,7 @@ const db = require('../db');
 const config = require('../config');
 const { authRequired, userHasPremium } = require('../middleware/auth');
 const { checkoutLimiter } = require('../middleware/limiters');
+const { asyncHandler } = require('../lib/http');
 const validation = require('../lib/validation');
 const {
   getStripe,
@@ -74,101 +75,114 @@ router.get('/config', async (_req, res) => {
   }
 });
 
-router.post('/create-checkout-session', authRequired, checkoutLimiter, async (req, res) => {
-  const stripe = getStripe();
-  if (!stripe || !config.stripePriceId) {
-    return res.status(503).json({ error: 'Stripe n’est pas encore configuré sur le serveur' });
-  }
-  if (userHasPremium(req.user)) {
-    return res.status(409).json({ error: 'Votre abonnement Premium est déjà actif' });
-  }
-
-  const target = validation.checkoutRedirect(req.body.redirect);
-
-  try {
-    let customerId = req.user.stripe_customer_id;
-    if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: req.user.email,
-        name: req.user.pseudo,
-        metadata: { userId: req.user.id },
-      });
-      customerId = customer.id;
-      db.prepare('UPDATE users SET stripe_customer_id = ? WHERE id = ?').run(customerId, req.user.id);
+router.post(
+  '/create-checkout-session',
+  authRequired,
+  checkoutLimiter,
+  asyncHandler(async (req, res) => {
+    const stripe = getStripe();
+    if (!stripe || !config.stripePriceId) {
+      return res.status(503).json({ error: 'Stripe n’est pas encore configuré sur le serveur' });
+    }
+    if (userHasPremium(req.user)) {
+      return res.status(409).json({ error: 'Votre abonnement Premium est déjà actif' });
     }
 
-    const session = await stripe.checkout.sessions.create({
-      mode: 'subscription',
-      customer: customerId,
-      client_reference_id: req.user.id,
-      line_items: [{ price: config.stripePriceId, quantity: 1 }],
-      success_url: `${config.baseUrl}/premium.html?success=1&redirect=${encodeURIComponent(target)}&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${config.baseUrl}/premium.html?canceled=1`,
-      metadata: { userId: req.user.id },
-      subscription_data: { metadata: { userId: req.user.id } },
-    });
+    const target = validation.checkoutRedirect(req.body.redirect);
 
-    res.json({ url: session.url, sessionId: session.id });
-  } catch (err) {
-    console.error('[stripe] Checkout impossible :', err.message);
-    res.status(502).json({ error: 'Impossible d’ouvrir le paiement Stripe. Réessayez.' });
-  }
-});
+    try {
+      let customerId = req.user.stripe_customer_id;
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: req.user.email,
+          name: req.user.pseudo,
+          metadata: { userId: req.user.id },
+        });
+        customerId = customer.id;
+        await db.run('UPDATE users SET stripe_customer_id = ? WHERE id = ?', [customerId, req.user.id]);
+      }
 
-router.post('/portal', authRequired, async (req, res) => {
-  const stripe = getStripe();
-  if (!stripe) return res.status(503).json({ error: 'Stripe n’est pas configuré' });
-  if (!req.user.stripe_customer_id) {
-    return res.status(400).json({ error: 'Aucun abonnement Stripe associé à ce compte' });
-  }
+      const session = await stripe.checkout.sessions.create({
+        mode: 'subscription',
+        customer: customerId,
+        client_reference_id: req.user.id,
+        line_items: [{ price: config.stripePriceId, quantity: 1 }],
+        success_url: `${config.baseUrl}/premium.html?success=1&redirect=${encodeURIComponent(target)}&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${config.baseUrl}/premium.html?canceled=1`,
+        metadata: { userId: req.user.id },
+        subscription_data: { metadata: { userId: req.user.id } },
+      });
 
-  try {
-    const session = await stripe.billingPortal.sessions.create({
-      customer: req.user.stripe_customer_id,
-      return_url: `${config.baseUrl}/compte.html`,
-    });
-    res.json({ url: session.url });
-  } catch (err) {
-    console.error('[stripe] Portail client impossible :', err.message);
-    res.status(502).json({ error: 'Portail Stripe indisponible. Activez-le dans votre dashboard Stripe.' });
-  }
-});
+      res.json({ url: session.url, sessionId: session.id });
+    } catch (err) {
+      console.error('[stripe] Checkout impossible :', err.message);
+      res.status(502).json({ error: 'Impossible d’ouvrir le paiement Stripe. Réessayez.' });
+    }
+  })
+);
 
-router.get('/session-status', authRequired, async (req, res) => {
-  const stripe = getStripe();
-  const sessionId = validation.text(req.query.session_id, 200);
-  if (!stripe || !sessionId) return res.status(400).json({ error: 'session_id requis' });
+router.post(
+  '/portal',
+  authRequired,
+  asyncHandler(async (req, res) => {
+    const stripe = getStripe();
+    if (!stripe) return res.status(503).json({ error: 'Stripe n’est pas configuré' });
+    if (!req.user.stripe_customer_id) {
+      return res.status(400).json({ error: 'Aucun abonnement Stripe associé à ce compte' });
+    }
 
-  try {
-    const session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ['subscription'] });
-    const owner = session.metadata?.userId || session.client_reference_id;
-    if (owner !== req.user.id) return res.status(403).json({ error: 'Session invalide' });
+    try {
+      const session = await stripe.billingPortal.sessions.create({
+        customer: req.user.stripe_customer_id,
+        return_url: `${config.baseUrl}/compte.html`,
+      });
+      res.json({ url: session.url });
+    } catch (err) {
+      console.error('[stripe] Portail client impossible :', err.message);
+      res.status(502).json({ error: 'Portail Stripe indisponible. Activez-le dans votre dashboard Stripe.' });
+    }
+  })
+);
 
-    res.json({
-      status: session.status,
-      paymentStatus: session.payment_status,
-      subscriptionStatus: typeof session.subscription === 'object'
-        ? session.subscription?.status
-        : null,
-    });
-  } catch (err) {
-    console.error('[stripe] Statut session impossible :', err.message);
-    res.status(502).json({ error: 'Session Stripe introuvable' });
-  }
-});
+router.get(
+  '/session-status',
+  authRequired,
+  asyncHandler(async (req, res) => {
+    const stripe = getStripe();
+    const sessionId = validation.text(req.query.session_id, 200);
+    if (!stripe || !sessionId) return res.status(400).json({ error: 'session_id requis' });
 
-function findUserForSubscription(subscription) {
+    try {
+      const session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ['subscription'] });
+      const owner = session.metadata?.userId || session.client_reference_id;
+      if (owner !== req.user.id) return res.status(403).json({ error: 'Session invalide' });
+
+      res.json({
+        status: session.status,
+        paymentStatus: session.payment_status,
+        subscriptionStatus: typeof session.subscription === 'object'
+          ? session.subscription?.status
+          : null,
+      });
+    } catch (err) {
+      console.error('[stripe] Statut session impossible :', err.message);
+      res.status(502).json({ error: 'Session Stripe introuvable' });
+    }
+  })
+);
+
+async function findUserForSubscription(subscription) {
   const userId = subscription.metadata?.userId;
-  if (userId) return db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+  if (userId) return db.get('SELECT * FROM users WHERE id = ?', [userId]);
   const customerId = typeof subscription.customer === 'string'
     ? subscription.customer
     : subscription.customer?.id;
   if (!customerId) return null;
-  return db.prepare('SELECT * FROM users WHERE stripe_customer_id = ?').get(customerId);
+  return db.get('SELECT * FROM users WHERE stripe_customer_id = ?', [customerId]);
 }
 
-function applySubscription(subscription) {
-  const user = findUserForSubscription(subscription);
+async function applySubscription(subscription) {
+  const user = await findUserForSubscription(subscription);
   if (!user) {
     console.warn('[stripe] Abonnement sans utilisateur rattaché :', subscription.id);
     return;
@@ -177,26 +191,29 @@ function applySubscription(subscription) {
   if (subscriptionGrantsAccess(subscription)) {
     const periodEnd = subscriptionPeriodEnd(subscription)
       || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-    db.prepare(
-      'UPDATE users SET premium_until = ?, stripe_subscription_id = ? WHERE id = ?'
-    ).run(periodEnd.toISOString(), subscription.id, user.id);
+    await db.run(
+      'UPDATE users SET premium_until = ?, stripe_subscription_id = ? WHERE id = ?',
+      [periodEnd.toISOString(), subscription.id, user.id]
+    );
   } else {
-    db.prepare(
-      `UPDATE users SET premium_until = datetime('now'),
+    await db.run(
+      `UPDATE users SET premium_until = now(),
        stripe_subscription_id = CASE WHEN stripe_subscription_id = ? THEN NULL ELSE stripe_subscription_id END
-       WHERE id = ?`
-    ).run(subscription.id, user.id);
+       WHERE id = ?`,
+      [subscription.id, user.id]
+    );
   }
 }
 
-function revokeSubscription(subscription) {
-  const user = findUserForSubscription(subscription);
+async function revokeSubscription(subscription) {
+  const user = await findUserForSubscription(subscription);
   if (!user) return;
-  db.prepare(
-    `UPDATE users SET premium_until = datetime('now'),
+  await db.run(
+    `UPDATE users SET premium_until = now(),
      stripe_subscription_id = CASE WHEN stripe_subscription_id = ? THEN NULL ELSE stripe_subscription_id END
-     WHERE id = ?`
-  ).run(subscription.id, user.id);
+     WHERE id = ?`,
+    [subscription.id, user.id]
+  );
 }
 
 function stripeWebhookHandler(req, res) {
@@ -221,41 +238,42 @@ function stripeWebhookHandler(req, res) {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  const seen = db.prepare('SELECT id FROM stripe_events WHERE id = ?').get(event.id);
-  if (seen) return res.json({ received: true, duplicate: true });
-
   (async () => {
+    const seen = await db.get('SELECT id FROM stripe_events WHERE id = ?', [event.id]);
+    if (seen) return { duplicate: true };
+
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object;
         if (session.mode === 'subscription' && session.subscription) {
           const sub = await stripe.subscriptions.retrieve(session.subscription);
-          applySubscription(sub);
+          await applySubscription(sub);
           const userId = session.metadata?.userId || session.client_reference_id;
           if (userId && session.customer) {
             const customerId = typeof session.customer === 'string' ? session.customer : session.customer.id;
-            db.prepare('UPDATE users SET stripe_customer_id = ? WHERE id = ?').run(customerId, userId);
+            await db.run('UPDATE users SET stripe_customer_id = ? WHERE id = ?', [customerId, userId]);
           }
         }
         break;
       }
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
-        applySubscription(event.data.object);
+        await applySubscription(event.data.object);
         break;
       case 'customer.subscription.deleted':
-        revokeSubscription(event.data.object);
+        await revokeSubscription(event.data.object);
         break;
       default:
         break;
     }
 
-    db.prepare('INSERT OR IGNORE INTO stripe_events (id, type) VALUES (?, ?)').run(
+    await db.run('INSERT INTO stripe_events (id, type) VALUES (?, ?) ON CONFLICT (id) DO NOTHING', [
       event.id,
-      event.type
-    );
+      event.type,
+    ]);
+    return {};
   })()
-    .then(() => res.json({ received: true }))
+    .then(({ duplicate }) => res.json({ received: true, duplicate: !!duplicate }))
     .catch((err) => {
       console.error('[stripe webhook]', err);
       res.status(500).json({ error: 'Webhook handler failed' });

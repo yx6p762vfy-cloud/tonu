@@ -1,9 +1,8 @@
-const path = require('path');
-const fs = require('fs/promises');
 const { randomUUID } = require('crypto');
 const multer = require('multer');
 const sharp = require('sharp');
 const config = require('../config');
+const storage = require('./storage');
 
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
@@ -33,11 +32,12 @@ async function processImage(file) {
       throw err;
     }
     const fileName = `${randomUUID()}.jpg`;
-    await image
+    const buffer = await image
       .rotate()
       .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
       .jpeg({ quality: 82, mozjpeg: true })
-      .toFile(path.join(config.uploadsDir, fileName));
+      .toBuffer();
+    await storage.putObject(fileName, buffer);
     return fileName;
   } catch (err) {
     if (err.code === 'UNSUPPORTED_IMAGE') throw err;
@@ -61,11 +61,7 @@ async function saveUploads(files) {
 }
 
 async function deleteFiles(fileNames) {
-  await Promise.all(
-    fileNames
-      .filter((name) => name && !String(name).startsWith('images/'))
-      .map((name) => fs.unlink(path.join(config.uploadsDir, path.basename(name))).catch(() => {}))
-  );
+  await storage.deleteObjects(fileNames);
 }
 
 function multerErrorResponse(err, res) {

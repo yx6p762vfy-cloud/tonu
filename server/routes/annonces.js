@@ -4,10 +4,10 @@ const db = require('../db');
 const config = require('../config');
 const { authRequired, authOptional, userHasPremium } = require('../middleware/auth');
 const { publishLimiter } = require('../middleware/limiters');
+const { asyncHandler } = require('../lib/http');
 const { mapAnnonceRow } = require('../lib/serialize');
 const validation = require('../lib/validation');
 const { upload, saveUploads, deleteFiles, multerErrorResponse } = require('../lib/images');
-const { asyncHandler } = require('../lib/http');
 
 const router = express.Router();
 
@@ -15,15 +15,14 @@ function likeTerm(value) {
   return `%${value.replace(/[\\%_]/g, '\\$&')}%`;
 }
 
-function photosByAnnonce(ids) {
+async function photosByAnnonce(ids) {
   const map = new Map();
   if (!ids.length) return map;
   const placeholders = ids.map(() => '?').join(',');
-  const rows = db
-    .prepare(
-      `SELECT * FROM annonce_photos WHERE annonce_id IN (${placeholders}) ORDER BY sort_order ASC`
-    )
-    .all(...ids);
+  const rows = await db.all(
+    `SELECT * FROM annonce_photos WHERE annonce_id IN (${placeholders}) ORDER BY sort_order ASC`,
+    ids
+  );
   rows.forEach((row) => {
     if (!map.has(row.annonce_id)) map.set(row.annonce_id, []);
     map.get(row.annonce_id).push(row);
@@ -32,19 +31,18 @@ function photosByAnnonce(ids) {
 }
 
 function selectRows(where, params = []) {
-  return db
-    .prepare(
-      `SELECT a.*, u.pseudo AS author_pseudo, u.age AS author_age,
-              (SELECT COUNT(*) FROM comments c WHERE c.annonce_id = a.id) AS comment_count
-       FROM annonces a
-       JOIN users u ON u.id = a.user_id
-       WHERE ${where}`
-    )
-    .all(...params);
+  return db.all(
+    `SELECT a.*, u.pseudo AS author_pseudo, u.age AS author_age,
+            (SELECT COUNT(*)::int FROM comments c WHERE c.annonce_id = a.id) AS comment_count
+     FROM annonces a
+     JOIN users u ON u.id = a.user_id
+     WHERE ${where}`,
+    params
+  );
 }
 
-function serializeRows(rows) {
-  const photos = photosByAnnonce(rows.map((row) => row.id));
+async function serializeRows(rows) {
+  const photos = await photosByAnnonce(rows.map((row) => row.id));
   return rows.map((row) =>
     mapAnnonceRow(
       row,
@@ -56,99 +54,106 @@ function serializeRows(rows) {
   );
 }
 
-function getOne(id) {
-  const rows = selectRows('a.id = ?', [id]);
-  return rows.length ? serializeRows(rows)[0] : null;
+async function getOne(id) {
+  const rows = await selectRows('a.id = ?', [id]);
+  return rows.length ? (await serializeRows(rows))[0] : null;
 }
 
 /* ── GET / — annonces approuvées, filtres, recherche, pagination ── */
-router.get('/', (req, res) => {
-  const conditions = ["a.status = 'approved'"];
-  const params = [];
+router.get(
+  '/',
+  asyncHandler(async (req, res) => {
+    const conditions = ["a.status = 'approved'"];
+    const params = [];
 
-  const q = validation.text(req.query.q, 80);
-  if (q) {
-    const term = likeTerm(q);
-    conditions.push(
-      "(a.title LIKE ? ESCAPE '\\' OR a.description LIKE ? ESCAPE '\\' OR a.city LIKE ? ESCAPE '\\')"
-    );
-    params.push(term, term, term);
-  }
+    const q = validation.text(req.query.q, 80);
+    if (q) {
+      const term = likeTerm(q);
+      conditions.push(
+        "(a.title ILIKE ? ESCAPE '\\' OR a.description ILIKE ? ESCAPE '\\' OR a.city ILIKE ? ESCAPE '\\')"
+      );
+      params.push(term, term, term);
+    }
 
-  if (req.query.cat) {
-    const cat = validation.oneOf(req.query.cat, validation.CATEGORIES);
-    if (!cat) return res.status(400).json({ error: 'Catégorie invalide' });
-    conditions.push('a.category = ?');
-    params.push(cat);
-  }
+    if (req.query.cat) {
+      const cat = validation.oneOf(req.query.cat, validation.CATEGORIES);
+      if (!cat) return res.status(400).json({ error: 'Catégorie invalide' });
+      conditions.push('a.category = ?');
+      params.push(cat);
+    }
 
-  const city = validation.text(req.query.city, 60);
-  if (city) {
-    conditions.push("a.city LIKE ? ESCAPE '\\'");
-    params.push(likeTerm(city));
-  }
+    const city = validation.text(req.query.city, 60);
+    if (city) {
+      conditions.push("a.city ILIKE ? ESCAPE '\\'");
+      params.push(likeTerm(city));
+    }
 
-  if (req.query.gender) {
-    const gender = validation.oneOf(req.query.gender, validation.GENDERS);
-    if (!gender) return res.status(400).json({ error: 'Genre invalide' });
-    conditions.push('LOWER(a.gender) = LOWER(?)');
-    params.push(gender);
-  }
+    if (req.query.gender) {
+      const gender = validation.oneOf(req.query.gender, validation.GENDERS);
+      if (!gender) return res.status(400).json({ error: 'Genre invalide' });
+      conditions.push('LOWER(a.gender) = LOWER(?)');
+      params.push(gender);
+    }
 
-  const sortMap = {
-    recent: 'a.created_at DESC, a.id DESC',
-    old: 'a.created_at ASC, a.id ASC',
-    city: 'a.city COLLATE NOCASE ASC, a.created_at DESC',
-    comments: 'comment_count DESC, a.created_at DESC',
-  };
-  const sort = sortMap[String(req.query.sort || 'recent')] || sortMap.recent;
+    const sortMap = {
+      recent: 'a.created_at DESC, a.id DESC',
+      old: 'a.created_at ASC, a.id ASC',
+      city: 'LOWER(a.city) ASC, a.created_at DESC',
+      comments: 'comment_count DESC, a.created_at DESC',
+    };
+    const sort = sortMap[String(req.query.sort || 'recent')] || sortMap.recent;
 
-  const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
-  const limit = Math.min(30, Math.max(1, Number.parseInt(req.query.limit, 10) || 12));
-  const offset = (page - 1) * limit;
-  const where = conditions.join(' AND ');
+    const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(30, Math.max(1, Number.parseInt(req.query.limit, 10) || 12));
+    const offset = (page - 1) * limit;
+    const where = conditions.join(' AND ');
 
-  const total = db
-    .prepare(`SELECT COUNT(*) AS c FROM annonces a WHERE ${where}`)
-    .get(...params).c;
+    const total = (await db.get(`SELECT COUNT(*)::int AS c FROM annonces a WHERE ${where}`, params)).c;
 
-  const rows = db
-    .prepare(
+    const rows = await db.all(
       `SELECT a.*, u.pseudo AS author_pseudo, u.age AS author_age,
-              (SELECT COUNT(*) FROM comments c WHERE c.annonce_id = a.id) AS comment_count
+              (SELECT COUNT(*)::int FROM comments c WHERE c.annonce_id = a.id) AS comment_count
        FROM annonces a JOIN users u ON u.id = a.user_id
        WHERE ${where}
        ORDER BY ${sort}
-       LIMIT ? OFFSET ?`
-    )
-    .all(...params, limit, offset);
+       LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    );
 
-  res.json({
-    annonces: serializeRows(rows),
-    pagination: { page, limit, total, pages: Math.ceil(total / limit) },
-  });
-});
+    res.json({
+      annonces: await serializeRows(rows),
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    });
+  })
+);
 
 /* ── GET /mine — annonces de l'utilisateur connecté ── */
-router.get('/mine', authRequired, (req, res) => {
-  const rows = selectRows('a.user_id = ?', [req.user.id]).sort(
-    (a, b) => String(b.created_at).localeCompare(String(a.created_at))
-  );
-  res.json({ annonces: serializeRows(rows) });
-});
+router.get(
+  '/mine',
+  authRequired,
+  asyncHandler(async (req, res) => {
+    const rows = await selectRows('a.user_id = ?', [req.user.id]);
+    rows.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    res.json({ annonces: await serializeRows(rows) });
+  })
+);
 
 /* ── GET /:id — détail ── */
-router.get('/:id', authOptional, (req, res) => {
-  const rows = selectRows('a.id = ?', [req.params.id]);
-  if (!rows.length) return res.status(404).json({ error: 'Annonce introuvable' });
-  const row = rows[0];
-  const isOwner = req.user && req.user.id === row.user_id;
-  const isStaff = req.user && ['admin', 'moderator'].includes(req.user.role);
-  if (row.status !== 'approved' && !isOwner && !isStaff) {
-    return res.status(404).json({ error: 'Annonce introuvable' });
-  }
-  res.json({ annonce: serializeRows([row])[0] });
-});
+router.get(
+  '/:id',
+  authOptional,
+  asyncHandler(async (req, res) => {
+    const rows = await selectRows('a.id = ?', [req.params.id]);
+    if (!rows.length) return res.status(404).json({ error: 'Annonce introuvable' });
+    const row = rows[0];
+    const isOwner = req.user && req.user.id === row.user_id;
+    const isStaff = req.user && ['admin', 'moderator'].includes(req.user.role);
+    if (row.status !== 'approved' && !isOwner && !isStaff) {
+      return res.status(404).json({ error: 'Annonce introuvable' });
+    }
+    res.json({ annonce: (await serializeRows([row]))[0] });
+  })
+);
 
 /* ── POST / — créer une annonce (Premium requis) ── */
 router.post(
@@ -179,10 +184,11 @@ router.post(
     if (!category) return res.status(400).json({ error: 'Catégorie invalide' });
     if (!intention) return res.status(400).json({ error: 'Intention invalide' });
 
-    const active = db
-      .prepare("SELECT COUNT(*) AS c FROM annonces WHERE user_id = ? AND status IN ('pending','approved')")
-      .get(req.user.id).c;
-    if (active >= config.maxAdsPerUser) {
+    const active = await db.get(
+      "SELECT COUNT(*)::int AS c FROM annonces WHERE user_id = ? AND status IN ('pending','approved')",
+      [req.user.id]
+    );
+    if (active.c >= config.maxAdsPerUser) {
       return res.status(400).json({
         error: `Limite de ${config.maxAdsPerUser} annonces actives atteinte. Supprimez-en une pour publier.`,
       });
@@ -192,24 +198,26 @@ router.post(
     const id = randomUUID();
 
     try {
-      db.transaction(() => {
-        db.prepare(
+      await db.tx(async (t) => {
+        await t.run(
           `INSERT INTO annonces (id, user_id, title, description, city, category, intention, gender, status)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')`
-        ).run(id, req.user.id, title, description, city, category, intention, gender);
-
-        const insertPhoto = db.prepare(
-          'INSERT INTO annonce_photos (id, annonce_id, file_name, sort_order) VALUES (?, ?, ?, ?)'
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+          [id, req.user.id, title, description, city, category, intention, gender]
         );
-        savedNames.forEach((name, i) => insertPhoto.run(randomUUID(), id, name, i));
-      })();
+        for (let i = 0; i < savedNames.length; i++) {
+          await t.run(
+            'INSERT INTO annonce_photos (id, annonce_id, file_name, sort_order) VALUES (?, ?, ?, ?)',
+            [randomUUID(), id, savedNames[i], i]
+          );
+        }
+      });
     } catch (err) {
       await deleteFiles(savedNames);
       throw err;
     }
 
     res.status(201).json({
-      annonce: getOne(id),
+      annonce: await getOne(id),
       message: 'Annonce soumise — en attente de modération',
     });
   })
@@ -222,7 +230,7 @@ router.patch(
   publishLimiter,
   upload.array('photos', config.maxPhotos),
   asyncHandler(async (req, res) => {
-    const row = db.prepare('SELECT * FROM annonces WHERE id = ?').get(req.params.id);
+    const row = await db.get('SELECT * FROM annonces WHERE id = ?', [req.params.id]);
     if (!row) return res.status(404).json({ error: 'Annonce introuvable' });
 
     const isOwner = row.user_id === req.user.id;
@@ -267,31 +275,32 @@ router.patch(
     }
 
     const savedNames = files.length ? await saveUploads(files) : [];
-    const oldPhotos = db
-      .prepare('SELECT file_name FROM annonce_photos WHERE annonce_id = ?')
-      .all(row.id)
-      .map((p) => p.file_name);
+    const oldPhotos = (
+      await db.all('SELECT file_name FROM annonce_photos WHERE annonce_id = ?', [row.id])
+    ).map((p) => p.file_name);
 
     try {
-      db.transaction(() => {
+      await db.tx(async (t) => {
         const sets = Object.keys(updates).map((key) => `${key} = ?`);
-        sets.push("updated_at = datetime('now')");
+        sets.push('updated_at = now()');
         const values = [...Object.values(updates)];
 
         if (!isStaff) {
           sets.push("status = 'pending'", 'rejection_reason = NULL', 'moderated_at = NULL', 'moderated_by = NULL');
         }
 
-        db.prepare(`UPDATE annonces SET ${sets.join(', ')} WHERE id = ?`).run(...values, row.id);
+        await t.run(`UPDATE annonces SET ${sets.join(', ')} WHERE id = ?`, [...values, row.id]);
 
         if (savedNames.length) {
-          db.prepare('DELETE FROM annonce_photos WHERE annonce_id = ?').run(row.id);
-          const insertPhoto = db.prepare(
-            'INSERT INTO annonce_photos (id, annonce_id, file_name, sort_order) VALUES (?, ?, ?, ?)'
-          );
-          savedNames.forEach((name, i) => insertPhoto.run(randomUUID(), row.id, name, i));
+          await t.run('DELETE FROM annonce_photos WHERE annonce_id = ?', [row.id]);
+          for (let i = 0; i < savedNames.length; i++) {
+            await t.run(
+              'INSERT INTO annonce_photos (id, annonce_id, file_name, sort_order) VALUES (?, ?, ?, ?)',
+              [randomUUID(), row.id, savedNames[i], i]
+            );
+          }
         }
-      })();
+      });
     } catch (err) {
       await deleteFiles(savedNames);
       throw err;
@@ -300,30 +309,33 @@ router.patch(
     if (savedNames.length) await deleteFiles(oldPhotos);
 
     res.json({
-      annonce: getOne(row.id),
+      annonce: await getOne(row.id),
       message: isStaff ? 'Annonce mise à jour' : 'Annonce mise à jour — elle repasse en modération',
     });
   })
 );
 
 /* ── DELETE /:id ── */
-router.delete('/:id', authRequired, asyncHandler(async (req, res) => {
-  const row = db.prepare('SELECT * FROM annonces WHERE id = ?').get(req.params.id);
-  if (!row) return res.status(404).json({ error: 'Annonce introuvable' });
+router.delete(
+  '/:id',
+  authRequired,
+  asyncHandler(async (req, res) => {
+    const row = await db.get('SELECT * FROM annonces WHERE id = ?', [req.params.id]);
+    if (!row) return res.status(404).json({ error: 'Annonce introuvable' });
 
-  const isOwner = row.user_id === req.user.id;
-  const isStaff = ['admin', 'moderator'].includes(req.user.role);
-  if (!isOwner && !isStaff) return res.status(403).json({ error: 'Accès refusé' });
+    const isOwner = row.user_id === req.user.id;
+    const isStaff = ['admin', 'moderator'].includes(req.user.role);
+    if (!isOwner && !isStaff) return res.status(403).json({ error: 'Accès refusé' });
 
-  const files = db
-    .prepare('SELECT file_name FROM annonce_photos WHERE annonce_id = ?')
-    .all(row.id)
-    .map((p) => p.file_name);
+    const files = (
+      await db.all('SELECT file_name FROM annonce_photos WHERE annonce_id = ?', [row.id])
+    ).map((p) => p.file_name);
 
-  db.prepare('DELETE FROM annonces WHERE id = ?').run(row.id);
-  await deleteFiles(files);
-  res.json({ ok: true });
-}));
+    await db.run('DELETE FROM annonces WHERE id = ?', [row.id]);
+    await deleteFiles(files);
+    res.json({ ok: true });
+  })
+);
 
 router.use((err, _req, res, next) => {
   if (multerErrorResponse(err, res)) return;

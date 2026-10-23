@@ -1,14 +1,28 @@
 const path = require('path');
+const config = require('../config');
+const storage = require('./storage');
+
+function isoDate(value) {
+  if (!value) return null;
+  const d = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+}
+
+function isoDateTime(value) {
+  if (!value) return null;
+  const d = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString().replace('T', ' ').slice(0, 16);
+}
 
 function photoUrl(fileName) {
   if (!fileName) return null;
   if (fileName.startsWith('images/')) return `/${fileName}`;
   if (/^https?:\/\//i.test(fileName)) return fileName;
-  return `/uploads/${path.basename(fileName)}`;
+  return storage.publicUrl(path.basename(fileName));
 }
 
 function mapAnnonceRow(row, photos, user, baseUrl, extra = {}) {
-  const urls = photos.map((p) => photoUrl(p.file_name, baseUrl)).filter(Boolean);
+  const urls = photos.map((p) => photoUrl(p.file_name)).filter(Boolean);
   return {
     id: row.id,
     title: row.title,
@@ -21,8 +35,8 @@ function mapAnnonceRow(row, photos, user, baseUrl, extra = {}) {
     desc: row.description,
     image: urls[0] || null,
     photos: urls,
-    createdAt: row.created_at?.slice(0, 10) || row.created_at,
-    updatedAt: row.updated_at || null,
+    createdAt: isoDate(row.created_at),
+    updatedAt: isoDateTime(row.updated_at),
     status: row.status,
     rejectionReason: row.rejection_reason || null,
     userPosted: !!user && !String(user.id).startsWith('demo-'),
@@ -46,4 +60,4 @@ function mapUserPublic(u) {
   };
 }
 
-module.exports = { photoUrl, mapAnnonceRow, mapUserPublic };
+module.exports = { photoUrl, mapAnnonceRow, mapUserPublic, isoDate, isoDateTime };
