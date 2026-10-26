@@ -1,16 +1,12 @@
 const express = require('express');
 const db = require('../db');
 const config = require('../config');
-const { authRequired, userHasPremium } = require('../middleware/auth');
+const plans = require('../lib/plans');
+const { authRequired } = require('../middleware/auth');
 const { checkoutLimiter } = require('../middleware/limiters');
 const { asyncHandler } = require('../lib/http');
 const validation = require('../lib/validation');
-const {
-  getStripe,
-  stripeConfigured,
-  subscriptionPeriodEnd,
-  subscriptionGrantsAccess,
-} = require('../lib/stripe');
+const { getStripe, stripeConfigured } = require('../lib/stripe');
 
 const router = express.Router();
 
@@ -19,60 +15,44 @@ const ZERO_DECIMAL_CURRENCIES = new Set([
   'pyg', 'rwf', 'ugx', 'vnd', 'vuv', 'xaf', 'xof', 'xpf',
 ]);
 
-let priceCache = { at: 0, data: null };
+const priceCache = new Map();
 
-async function getPriceInfo() {
-  if (!stripeConfigured()) return null;
-  if (priceCache.data && Date.now() - priceCache.at < 60_000) return priceCache.data;
+async function getPlanPrice(plan) {
+  const cached = priceCache.get(plan.key);
+  if (cached && Date.now() - cached.at < 60_000) return cached.data;
 
   const stripe = getStripe();
-  const price = await stripe.prices.retrieve(config.stripePriceId, { expand: ['product'] });
+  const price = await stripe.prices.retrieve(plan.priceId);
   const zeroDecimal = ZERO_DECIMAL_CURRENCIES.has(price.currency);
   const amount = zeroDecimal ? price.unit_amount : price.unit_amount / 100;
   const currency = price.currency.toUpperCase();
-  let formatted;
+  let priceLabel;
   try {
-    formatted = new Intl.NumberFormat('fr-FR', { style: 'currency', currency }).format(amount);
+    priceLabel = new Intl.NumberFormat('fr-FR', { style: 'currency', currency }).format(amount);
   } catch {
-    formatted = `${amount} ${currency}`;
+    priceLabel = `${amount} ${currency}`;
   }
-  const INTERVAL_LABELS = { day: 'jour', week: 'semaine', month: 'mois', year: 'an' };
-  const INTERVAL_PLURALS = { day: 'jours', week: 'semaines', month: 'mois', year: 'ans' };
-  const interval = price.recurring?.interval || null;
-  const intervalCount = price.recurring?.interval_count || null;
-  const intervalLabel = interval
-    ? intervalCount > 1
-      ? `${intervalCount} ${INTERVAL_PLURALS[interval]}`
-      : INTERVAL_LABELS[interval]
-    : null;
-  const period = intervalLabel ? ` / ${intervalLabel}` : '';
 
-  const data = {
-    amount,
-    currency,
-    interval,
-    intervalCount,
-    intervalLabel,
-    productName: typeof price.product === 'object' ? price.product.name : null,
-    priceLabel: formatted,
-    label: `${formatted}${period}`,
-  };
-  priceCache = { at: Date.now(), data };
+  const data = { amount, currency, priceLabel };
+  priceCache.set(plan.key, { at: Date.now(), data });
   return data;
 }
 
 router.get('/config', async (_req, res) => {
-  try {
-    const price = await getPriceInfo();
-    res.json({ configured: stripeConfigured(), price });
-  } catch (err) {
-    console.error('[stripe] Lecture du prix impossible :', err.message);
-    res.json({
-      configured: stripeConfigured(),
-      price: null,
-      error: 'Tarif Stripe indisponible pour le moment',
-    });
-  }
+  const list = await Promise.all(
+    plans.list().map(async (plan) => {
+      const base = plans.publicPlan(plan);
+      if (!base.available) return base;
+      try {
+        const price = await getPlanPrice(plan);
+        return { ...base, priceLabel: price.priceLabel, amount: price.amount, currency: price.currency };
+      } catch (err) {
+        console.error(`[paiement] Tarif ${plan.key} illisible :`, err.message);
+        return { ...base, available: false };
+      }
+    })
+  );
+  res.json({ configured: stripeConfigured(), plans: list });
 });
 
 router.post(
@@ -81,11 +61,9 @@ router.post(
   checkoutLimiter,
   asyncHandler(async (req, res) => {
     const stripe = getStripe();
-    if (!stripe || !config.stripePriceId) {
-      return res.status(503).json({ error: 'Stripe n’est pas encore configuré sur le serveur' });
-    }
-    if (userHasPremium(req.user)) {
-      return res.status(409).json({ error: 'Votre abonnement Premium est déjà actif' });
+    const plan = plans.findPlan(validation.text(req.body.plan, 20));
+    if (!stripe || !plan || !plan.priceId) {
+      return res.status(503).json({ error: 'Le paiement n’est pas encore disponible sur le site' });
     }
 
     const target = validation.checkoutRedirect(req.body.redirect);
@@ -102,44 +80,22 @@ router.post(
         await db.run('UPDATE users SET stripe_customer_id = ? WHERE id = ?', [customerId, req.user.id]);
       }
 
+      const metadata = { userId: req.user.id, plan: plan.key };
       const session = await stripe.checkout.sessions.create({
-        mode: 'subscription',
+        mode: 'payment',
         customer: customerId,
         client_reference_id: req.user.id,
-        line_items: [{ price: config.stripePriceId, quantity: 1 }],
-        success_url: `${config.baseUrl}/premium.html?success=1&redirect=${encodeURIComponent(target)}&session_id={CHECKOUT_SESSION_ID}`,
+        line_items: [{ price: plan.priceId, quantity: 1 }],
+        payment_intent_data: { metadata },
+        success_url: `${config.baseUrl}/premium.html?success=1&plan=${plan.key}&redirect=${encodeURIComponent(target)}&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${config.baseUrl}/premium.html?canceled=1`,
-        metadata: { userId: req.user.id },
-        subscription_data: { metadata: { userId: req.user.id } },
+        metadata,
       });
 
       res.json({ url: session.url, sessionId: session.id });
     } catch (err) {
-      console.error('[stripe] Checkout impossible :', err.message);
-      res.status(502).json({ error: 'Impossible d’ouvrir le paiement Stripe. Réessayez.' });
-    }
-  })
-);
-
-router.post(
-  '/portal',
-  authRequired,
-  asyncHandler(async (req, res) => {
-    const stripe = getStripe();
-    if (!stripe) return res.status(503).json({ error: 'Stripe n’est pas configuré' });
-    if (!req.user.stripe_customer_id) {
-      return res.status(400).json({ error: 'Aucun abonnement Stripe associé à ce compte' });
-    }
-
-    try {
-      const session = await stripe.billingPortal.sessions.create({
-        customer: req.user.stripe_customer_id,
-        return_url: `${config.baseUrl}/compte.html`,
-      });
-      res.json({ url: session.url });
-    } catch (err) {
-      console.error('[stripe] Portail client impossible :', err.message);
-      res.status(502).json({ error: 'Portail Stripe indisponible. Activez-le dans votre dashboard Stripe.' });
+      console.error('[paiement] Ouverture du paiement impossible :', err.message);
+      res.status(502).json({ error: 'Impossible d’ouvrir le paiement. Réessayez.' });
     }
   })
 );
@@ -153,72 +109,64 @@ router.get(
     if (!stripe || !sessionId) return res.status(400).json({ error: 'session_id requis' });
 
     try {
-      const session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ['subscription'] });
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
       const owner = session.metadata?.userId || session.client_reference_id;
       if (owner !== req.user.id) return res.status(403).json({ error: 'Session invalide' });
 
       res.json({
         status: session.status,
         paymentStatus: session.payment_status,
-        subscriptionStatus: typeof session.subscription === 'object'
-          ? session.subscription?.status
-          : null,
+        plan: session.metadata?.plan || null,
       });
     } catch (err) {
-      console.error('[stripe] Statut session impossible :', err.message);
-      res.status(502).json({ error: 'Session Stripe introuvable' });
+      console.error('[paiement] Statut de session illisible :', err.message);
+      res.status(502).json({ error: 'Paiement introuvable' });
     }
   })
 );
 
-async function findUserForSubscription(subscription) {
-  const userId = subscription.metadata?.userId;
-  if (userId) return db.get('SELECT * FROM users WHERE id = ?', [userId]);
-  const customerId = typeof subscription.customer === 'string'
-    ? subscription.customer
-    : subscription.customer?.id;
-  if (!customerId) return null;
-  return db.get('SELECT * FROM users WHERE stripe_customer_id = ?', [customerId]);
-}
-
-async function applySubscription(subscription) {
-  const user = await findUserForSubscription(subscription);
+async function grantPlan(userId, planKey) {
+  const plan = plans.findPlan(planKey);
+  if (!plan) {
+    console.warn('[paiement] Offre inconnue :', planKey);
+    return;
+  }
+  const user = await db.get('SELECT * FROM users WHERE id = ?', [userId]);
   if (!user) {
-    console.warn('[stripe] Abonnement sans utilisateur rattaché :', subscription.id);
+    console.warn('[paiement] Achat sans utilisateur rattaché :', userId);
     return;
   }
 
-  if (subscriptionGrantsAccess(subscription)) {
-    const periodEnd = subscriptionPeriodEnd(subscription)
-      || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-    await db.run(
-      'UPDATE users SET premium_until = ?, stripe_subscription_id = ? WHERE id = ?',
-      [periodEnd.toISOString(), subscription.id, user.id]
-    );
-  } else {
-    await db.run(
-      `UPDATE users SET premium_until = now(),
-       stripe_subscription_id = CASE WHEN stripe_subscription_id = ? THEN NULL ELSE stripe_subscription_id END
-       WHERE id = ?`,
-      [subscription.id, user.id]
-    );
-  }
+  const now = Date.now();
+  const currentEnd = user.premium_until ? new Date(user.premium_until).getTime() : 0;
+  const base = Math.max(now, currentEnd);
+  const until = new Date(base + plan.durationDays * 24 * 60 * 60 * 1000);
+  const currentPlan = currentEnd > now ? plans.findPlan(user.plan) : null;
+  const keepCurrent = currentPlan && currentPlan.priority > plan.priority;
+  const nextPlan = keepCurrent ? currentPlan.key : plan.key;
+
+  await db.run('UPDATE users SET plan = ?, premium_until = ? WHERE id = ?', [
+    nextPlan,
+    until.toISOString(),
+    user.id,
+  ]);
 }
 
-async function revokeSubscription(subscription) {
-  const user = await findUserForSubscription(subscription);
-  if (!user) return;
-  await db.run(
-    `UPDATE users SET premium_until = now(),
-     stripe_subscription_id = CASE WHEN stripe_subscription_id = ? THEN NULL ELSE stripe_subscription_id END
-     WHERE id = ?`,
-    [subscription.id, user.id]
-  );
+async function applyCheckoutSession(session) {
+  if (session.payment_status !== 'paid') return;
+  const userId = session.metadata?.userId || session.client_reference_id;
+  if (!userId) return;
+  await grantPlan(userId, session.metadata?.plan);
+
+  const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.id;
+  if (customerId) {
+    await db.run('UPDATE users SET stripe_customer_id = ? WHERE id = ?', [customerId, userId]);
+  }
 }
 
 function stripeWebhookHandler(req, res) {
   const stripe = getStripe();
-  if (!stripe) return res.status(503).send('Stripe non configuré');
+  if (!stripe) return res.status(503).send('Paiement non configuré');
 
   let event;
   try {
@@ -232,52 +180,34 @@ function stripeWebhookHandler(req, res) {
       return res.status(503).send('Webhook secret manquant');
     } else {
       event = JSON.parse(req.body.toString());
-      console.warn('[stripe] Webhook non signé accepté (développement uniquement)');
+      console.warn('[paiement] Webhook non signé accepté (développement uniquement)');
     }
   } catch (err) {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
   (async () => {
-    const seen = await db.get('SELECT id FROM stripe_events WHERE id = ?', [event.id]);
-    if (seen) return { duplicate: true };
+    const claimed = await db.get(
+      'INSERT INTO stripe_events (id, type) VALUES (?, ?) ON CONFLICT (id) DO NOTHING RETURNING id',
+      [event.id, event.type]
+    );
+    if (!claimed) return { duplicate: true };
 
-    switch (event.type) {
-      case 'checkout.session.completed': {
-        const session = event.data.object;
-        if (session.mode === 'subscription' && session.subscription) {
-          const sub = await stripe.subscriptions.retrieve(session.subscription);
-          await applySubscription(sub);
-          const userId = session.metadata?.userId || session.client_reference_id;
-          if (userId && session.customer) {
-            const customerId = typeof session.customer === 'string' ? session.customer : session.customer.id;
-            await db.run('UPDATE users SET stripe_customer_id = ? WHERE id = ?', [customerId, userId]);
-          }
-        }
-        break;
+    try {
+      if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
+        await applyCheckoutSession(event.data.object);
       }
-      case 'customer.subscription.created':
-      case 'customer.subscription.updated':
-        await applySubscription(event.data.object);
-        break;
-      case 'customer.subscription.deleted':
-        await revokeSubscription(event.data.object);
-        break;
-      default:
-        break;
+    } catch (err) {
+      await db.run('DELETE FROM stripe_events WHERE id = ?', [event.id]);
+      throw err;
     }
-
-    await db.run('INSERT INTO stripe_events (id, type) VALUES (?, ?) ON CONFLICT (id) DO NOTHING', [
-      event.id,
-      event.type,
-    ]);
     return {};
   })()
     .then(({ duplicate }) => res.json({ received: true, duplicate: !!duplicate }))
     .catch((err) => {
-      console.error('[stripe webhook]', err);
+      console.error('[paiement webhook]', err);
       res.status(500).json({ error: 'Webhook handler failed' });
     });
 }
 
-module.exports = { router, stripeWebhookHandler };
+module.exports = { router, stripeWebhookHandler, grantPlan };

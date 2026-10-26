@@ -1,6 +1,6 @@
 # tonú Privé
 
-Plateforme de rencontres pour adultes (18+) avec annonces modérées, commentaires et abonnement **Stripe**.
+Plateforme de rencontres pour adultes (18+) avec annonces modérées, commentaires et Pass d'affichage payés par carte bancaire (Stripe en arrière-plan, sans marque visible sur le site).
 
 Le fonctionnement est volontairement simple :
 
@@ -8,15 +8,25 @@ Le fonctionnement est volontairement simple :
 |---|---|
 | Consulter les annonces et les profils | Gratuit, sans compte |
 | Commenter une annonce | Compte gratuit obligatoire |
-| Publier une annonce avec photos | Abonnement **Premium** payé via Stripe, puis validation par la modération |
-| Gérer son abonnement | Portail client Stripe depuis l'espace compte |
+| Publier une annonce avec photos | Pass **Premium**, **Golden** ou **Elite** payé par carte bancaire, puis validation par la modération |
+| Acheter ou prolonger un Pass | Page « Les Pass » depuis le site ou l'espace compte |
+
+Les Pass sont des achats à l'unité, **sans reconduction automatique** :
+
+| Offre | Prix | Durée d'affichage | Mise en avant |
+|---|---|---|---|
+| Premium | 20 $ | 2 semaines | — |
+| Golden (recommandé) | 30 $ | 1 mois | — |
+| Elite | 40 $ | 2 mois | Annonces toujours affichées en premier |
+
+Un nouvel achat s'ajoute à la durée restante. Les annonces d'un membre dont le Pass a expiré ne sont plus visibles publiquement.
 
 ## Stack
 
 - **Node.js 20+** (recommandé : 22 ou 24), Express 4
 - **PostgreSQL** managé (Supabase, offre gratuite), migrations automatiques au démarrage ; en développement sans `DATABASE_URL`, un Postgres embarqué (PGlite) est utilisé dans `./data/pglite`
 - **Supabase Storage** : photos des annonces (bucket public), rien n'est écrit sur le disque local
-- **Stripe** : abonnement récurrent, Checkout, portail client, webhooks signés et idempotents
+- **Paiement** : Stripe en arrière-plan (Checkout à l'unité, webhooks signés et idempotents) ; aucun nom de prestataire n'est affiché dans l'interface
 - **Sharp** : re-encodage des photos en JPEG, suppression des métadonnées EXIF/GPS, redimensionnement
 - Front statique servi uniquement depuis `public/` — le code serveur, la base et les scripts ne sont jamais exposés
 - JWT + bcrypt (coût 12), limitation de débit, Helmet/CSP, validation et échappement systématiques
@@ -81,23 +91,24 @@ Au premier démarrage, si aucun administrateur n'existe et que `ADMIN_EMAIL` / `
 | `MAX_UPLOAD_BYTES` | `8388608` | Taille maximale par photo (8 Mo) |
 | `MAX_ADS_PER_USER` | `10` | Annonces actives maximum par membre |
 | `STRIPE_SECRET_KEY` | — | Clé `sk_test_…` ou `sk_live_…` |
-| `STRIPE_PRICE_ID` | — | Prix récurrent `price_…` de l'abonnement Premium |
+| `STRIPE_PRICE_PREMIUM` | — | Prix à l'unité `price_…` — Premium 20 $ / 2 semaines |
+| `STRIPE_PRICE_GOLDEN` | — | Prix à l'unité `price_…` — Golden 30 $ / 1 mois |
+| `STRIPE_PRICE_ELITE` | — | Prix à l'unité `price_…` — Elite 40 $ / 2 mois |
 | `STRIPE_WEBHOOK_SECRET` | — | Secret `whsec_…` du endpoint webhook, requis en production |
 | `TERMS_VERSION` | `1.0` | Version des CGU acceptée à l'inscription |
 
 La configuration est vérifiée au démarrage en production : `JWT_SECRET` fort, `BASE_URL` HTTPS, secret webhook si Stripe est actif, mot de passe admin d'au moins 12 caractères.
 
-## Configuration Stripe
+## Configuration du paiement
 
-1. Créez un **produit** avec un **prix récurrent** dans le [dashboard Stripe](https://dashboard.stripe.com/products).
-2. Renseignez `STRIPE_SECRET_KEY` et `STRIPE_PRICE_ID` dans `.env`.
+1. Créez un **produit** et trois **prix à l'unité** (paiement unique) dans le [dashboard Stripe](https://dashboard.stripe.com/products) : 20 $, 30 $ et 40 $.
+2. Renseignez `STRIPE_SECRET_KEY`, `STRIPE_PRICE_PREMIUM`, `STRIPE_PRICE_GOLDEN` et `STRIPE_PRICE_ELITE` dans `.env`.
 3. Créez un endpoint webhook vers `https://votre-domaine.com/api/stripe/webhook` et abonnez-le aux événements :
    - `checkout.session.completed`
-   - `customer.subscription.created`
-   - `customer.subscription.updated`
-   - `customer.subscription.deleted`
+   - `checkout.session.async_payment_succeeded`
 4. Copiez le secret de signature dans `STRIPE_WEBHOOK_SECRET`.
-5. Activez le **portail client** Stripe (Paramètres → Facturation → Portail client), utilisé par « Gérer mon abonnement ».
+
+L'interface n'affiche jamais le nom du prestataire : les pages parlent de paiement sécurisé par carte bancaire. Le prestataire reste visible uniquement sur sa propre page de paiement, pendant la transaction.
 
 En local, avec la CLI Stripe :
 
@@ -136,7 +147,7 @@ Toutes les routes sont préfixées par `/api`.
 | Commentaires | `GET/POST /comments/:annonceId`, `DELETE /comments/:annonceId/:commentId` |
 | Signalements | `POST /reports` |
 | Administration | `GET /admin/stats`, `GET /admin/annonces`, `POST /admin/annonces/:id/approve`, `POST /admin/annonces/:id/reject`, `GET /admin/reports`, `POST /admin/reports/:id/resolve`, `GET /admin/users`, `POST /admin/users/:id/ban` |
-| Stripe | `GET /stripe/config`, `POST /stripe/create-checkout-session`, `POST /stripe/portal`, `GET /stripe/session-status`, `POST /stripe/webhook` |
+| Paiement | `GET /stripe/config`, `POST /stripe/create-checkout-session`, `GET /stripe/session-status`, `POST /stripe/webhook` |
 
 Les routes protégées attendent un en-tête `Authorization: Bearer <token>`.
 
@@ -146,7 +157,7 @@ Les routes protégées attendent un en-tête `Authorization: Bearer <token>`.
 npm test
 ```
 
-La suite démarre un serveur isolé sur un port libre, avec un Postgres embarqué en mémoire (PGlite exposé en TCP) et un serveur Storage Supabase factice, et couvre : en-têtes de sécurité et non-exposition des fichiers internes, inscriptions et doublons, sessions, filtres/recherche/pagination, commentaires, blocage de publication sans Premium, upload vers Storage et suppression EXIF, visibilité privée des annonces en attente, modération, refus motivés, rôles, suspensions, signalements, export RGPD, suppression de compte et dégradation propre sans Stripe.
+La suite démarre un serveur isolé sur un port libre, avec un Postgres embarqué en mémoire (PGlite exposé en TCP) et un serveur Storage Supabase factice, et couvre : en-têtes de sécurité et non-exposition des fichiers internes, inscriptions et doublons, sessions, filtres/recherche/pagination, commentaires, blocage de publication sans Pass, upload vers Storage et suppression EXIF, visibilité privée des annonces en attente, modération, refus motivés, rôles, suspensions, signalements, export RGPD, suppression de compte, catalogue des trois offres, activation d'un Pass par webhook idempotent, cumul des durées et priorité d'affichage Elite.
 
 Aucune vraie clé Stripe ni aucun fichier `.env` n'est utilisé par les tests.
 
@@ -169,7 +180,7 @@ Le bucket `photos` est créé automatiquement au premier démarrage. Les migrati
 - `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` ;
 - `BASE_URL` : URL HTTPS finale, sans slash final (ex. `https://tonu-prive.onrender.com` ou votre domaine) ;
 - `ADMIN_EMAIL` et `ADMIN_PASSWORD` (12 caractères minimum) : le compte admin est créé au premier démarrage ;
-- `SUPPORT_EMAIL`, `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`, `STRIPE_WEBHOOK_SECRET`.
+- `SUPPORT_EMAIL`, `STRIPE_SECRET_KEY`, `STRIPE_PRICE_PREMIUM`, `STRIPE_PRICE_GOLDEN`, `STRIPE_PRICE_ELITE`, `STRIPE_WEBHOOK_SECRET`.
 
 `JWT_SECRET` est généré par Render ; `TRUST_PROXY` et `SUPABASE_BUCKET` sont déjà définis.
 
@@ -190,7 +201,7 @@ Le `Dockerfile` utilise Node 24 et un healthcheck ; l'application tourne avec l'
 
 ```bash
 cp .env.example .env
-# Renseignez .env : BASE_URL=https://votre-domaine.com, JWT_SECRET, admin, Stripe…
+# Renseignez .env : BASE_URL=https://votre-domaine.com, JWT_SECRET, admin, paiement…
 docker compose up -d --build
 docker compose ps
 docker compose logs -f app
@@ -246,7 +257,7 @@ Gardez le processus sous PM2 ou systemd, avec redémarrage automatique, et place
 - [ ] `DATABASE_URL` (pooler de session), `SUPABASE_URL` et `SUPABASE_SERVICE_ROLE_KEY` renseignés ; bucket créé au démarrage
 - [ ] Mot de passe admin unique de 12+ caractères ; `SUPPORT_EMAIL` réel
 - [ ] `SEED_DEMO=false`
-- [ ] Clés Stripe **live**, webhook signé et testé, portail client activé
+- [ ] Clés Stripe **live**, trois prix à l'unité, webhook signé et testé
 - [ ] Identité de l'éditeur et coordonnées de l'hébergeur complétées dans `public/mentions-legales.html`
 - [ ] Pages CGU, confidentialité, sécurité et mentions légales relues par un conseil juridique
 - [ ] Sauvegarde Supabase testée (restauration comprise)

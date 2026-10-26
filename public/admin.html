@@ -141,7 +141,7 @@ async function loadStats() {
     statCard(stats.rejected, 'Refusées'),
     statCard(stats.openReports, 'Signalements'),
     statCard(stats.users, 'Membres'),
-    statCard(stats.premium, 'Premium actifs'),
+    statCard(stats.premium, 'Pass actifs'),
   ].join('');
   document.querySelectorAll('[data-count]').forEach((el) => {
     el.textContent = stats[el.dataset.count] ?? '';
@@ -442,7 +442,7 @@ async function renderUsers() {
     <div style="overflow-x:auto">
     <table class="users-table">
       <thead><tr>
-        <th>Membre</th><th>Rôle</th><th>Premium</th><th class="hide-sm">Annonces</th><th class="hide-sm">Inscrit</th><th>Statut</th><th></th>
+        <th>Membre</th><th>Rôle</th><th>Pass</th><th class="hide-sm">Annonces</th><th class="hide-sm">Inscrit</th><th>Statut</th><th></th>
       </tr></thead>
       <tbody>
         ${data.users.map((u) => `

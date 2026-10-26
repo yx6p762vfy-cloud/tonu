@@ -70,6 +70,7 @@ const STATEMENTS = [
     pseudo TEXT NOT NULL,
     age INTEGER NOT NULL,
     role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user','admin','moderator')),
+    plan TEXT,
     premium_until TIMESTAMPTZ,
     stripe_customer_id TEXT,
     stripe_subscription_id TEXT,
@@ -129,6 +130,7 @@ const STATEMENTS = [
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users (LOWER(email))`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_pseudo_unique ON users (LOWER(pseudo))`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS plan TEXT`,
   `CREATE INDEX IF NOT EXISTS idx_annonces_status ON annonces(status)`,
   `CREATE INDEX IF NOT EXISTS idx_annonces_user ON annonces(user_id)`,
   `CREATE INDEX IF NOT EXISTS idx_annonces_created ON annonces(created_at DESC)`,
@@ -155,6 +157,10 @@ const DEMOS = [
 
 async function seedDemoAnnonces() {
   if (!config.seedDemo) return;
+  await run(
+    `UPDATE users SET plan = COALESCE(plan, 'golden'), premium_until = now() + interval '10 years'
+     WHERE id LIKE 'demo-%' AND (premium_until IS NULL OR premium_until < now())`
+  );
   const row = await get('SELECT COUNT(*)::int AS c FROM annonces');
   if (row.c > 0) return;
 
@@ -165,8 +171,8 @@ async function seedDemoAnnonces() {
       const existing = await t.get('SELECT id FROM users WHERE id = ?', [userId]);
       if (!existing) {
         await t.run(
-          `INSERT INTO users (id, email, password_hash, pseudo, age, role)
-           VALUES (?, ?, ?, ?, ?, 'user')`,
+          `INSERT INTO users (id, email, password_hash, pseudo, age, role, plan, premium_until)
+           VALUES (?, ?, ?, ?, ?, 'user', 'golden', now() + interval '10 years')`,
           [userId, `${id}@demo.local`, bcrypt.hashSync('unused', 10), pseudoName, memberAge]
         );
       }

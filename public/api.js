@@ -124,14 +124,11 @@ const API = {
   stripeConfig() {
     return this.request('/api/stripe/config');
   },
-  createCheckoutSession(redirect) {
+  createCheckoutSession(plan, redirect) {
     return this.request('/api/stripe/create-checkout-session', {
       method: 'POST',
-      body: { redirect },
+      body: { plan, redirect },
     });
-  },
-  stripePortal() {
-    return this.request('/api/stripe/portal', { method: 'POST' });
   },
   sessionStatus(sessionId) {
     return this.request(`/api/stripe/session-status?session_id=${encodeURIComponent(sessionId)}`);

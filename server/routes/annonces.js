@@ -33,6 +33,7 @@ async function photosByAnnonce(ids) {
 function selectRows(where, params = []) {
   return db.all(
     `SELECT a.*, u.pseudo AS author_pseudo, u.age AS author_age,
+            u.plan AS author_plan, u.premium_until AS author_premium_until,
             (SELECT COUNT(*)::int FROM comments c WHERE c.annonce_id = a.id) AS comment_count
      FROM annonces a
      JOIN users u ON u.id = a.user_id
@@ -47,7 +48,12 @@ async function serializeRows(rows) {
     mapAnnonceRow(
       row,
       photos.get(row.id) || [],
-      { id: row.user_id, pseudo: row.author_pseudo, age: row.author_age },
+      {
+        id: row.user_id,
+        pseudo: row.author_pseudo,
+        age: row.author_age,
+        plan: row.author_plan,
+      },
       config.baseUrl,
       { commentCount: row.comment_count }
     )
@@ -63,7 +69,7 @@ async function getOne(id) {
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    const conditions = ["a.status = 'approved'"];
+    const conditions = ["a.status = 'approved'", 'u.premium_until > now()'];
     const params = [];
 
     const q = validation.text(req.query.q, 80);
@@ -108,14 +114,22 @@ router.get(
     const offset = (page - 1) * limit;
     const where = conditions.join(' AND ');
 
-    const total = (await db.get(`SELECT COUNT(*)::int AS c FROM annonces a WHERE ${where}`, params)).c;
+    const total = (
+      await db.get(
+        `SELECT COUNT(*)::int AS c
+         FROM annonces a JOIN users u ON u.id = a.user_id
+         WHERE ${where}`,
+        params
+      )
+    ).c;
 
     const rows = await db.all(
       `SELECT a.*, u.pseudo AS author_pseudo, u.age AS author_age,
+              u.plan AS author_plan, u.premium_until AS author_premium_until,
               (SELECT COUNT(*)::int FROM comments c WHERE c.annonce_id = a.id) AS comment_count
        FROM annonces a JOIN users u ON u.id = a.user_id
        WHERE ${where}
-       ORDER BY ${sort}
+       ORDER BY CASE WHEN u.plan = 'elite' THEN 0 ELSE 1 END, ${sort}
        LIMIT ? OFFSET ?`,
       [...params, limit, offset]
     );
@@ -148,7 +162,8 @@ router.get(
     const row = rows[0];
     const isOwner = req.user && req.user.id === row.user_id;
     const isStaff = req.user && ['admin', 'moderator'].includes(req.user.role);
-    if (row.status !== 'approved' && !isOwner && !isStaff) {
+    const planActive = !!row.author_premium_until && new Date(row.author_premium_until) > new Date();
+    if ((row.status !== 'approved' || !planActive) && !isOwner && !isStaff) {
       return res.status(404).json({ error: 'Annonce introuvable' });
     }
     res.json({ annonce: (await serializeRows([row]))[0] });
@@ -163,7 +178,7 @@ router.post(
   upload.array('photos', config.maxPhotos),
   asyncHandler(async (req, res) => {
     if (!userHasPremium(req.user)) {
-      return res.status(402).json({ error: 'Abonnement Premium requis pour publier' });
+      return res.status(402).json({ error: 'Un Pass actif est requis pour publier' });
     }
 
     const files = req.files || [];

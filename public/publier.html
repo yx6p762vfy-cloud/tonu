@@ -107,17 +107,17 @@
             <button class="btn btn-primary" type="submit" id="btn-submit"><span>Envoyer à modération</span></button>
             <a href="product.html" class="btn btn-secondary" id="btn-cancel" style="display:none"><span>Annuler</span></a>
           </div>
-          <p class="form-sub" style="margin:14px 0 0;font-size:10.5px" id="form-note">Publication réservée aux membres Premium. Votre annonce repasse en modération à chaque modification.</p>
+          <p class="form-sub" style="margin:14px 0 0;font-size:10.5px" id="form-note">Publication réservée aux membres avec un Pass actif. Votre annonce repasse en modération à chaque modification.</p>
         </form>
       </div>
     </div>
 
     <aside class="publish-aside">
       <div class="premium-banner" id="premium-side">
-        <h3>Pass Premium</h3>
-        <p>Carte bancaire via Stripe · renouvellement mensuel</p>
+        <h3>Pass d’affichage</h3>
+        <p>2 semaines, 1 mois ou 2 mois · paiement par carte bancaire</p>
         <p class="premium-price" id="side-price">—</p>
-        <a href="premium.html" class="btn btn-primary btn-sm btn-full" style="margin-top:12px"><span>Gérer mon abonnement</span></a>
+        <a href="premium.html?redirect=publier.html" class="btn btn-primary btn-sm btn-full" style="margin-top:12px"><span>Choisir mon Pass</span></a>
       </div>
       <div class="form-card" style="padding:22px">
         <div class="eyebrow" style="margin-bottom:14px">Règles de publication</div>
@@ -337,7 +337,7 @@ document.getElementById('publish-form').addEventListener('submit', async (e) => 
     }, 700);
   } catch (err) {
     if (err.code === 'PREMIUM_REQUIRED' || err.status === 402) {
-      setGate(`<div class="notice warn"><strong>Abonnement Premium requis.</strong> Activez votre Pass pour publier une annonce. <a href="premium.html?redirect=publier.html">Voir les offres</a></div>`);
+      setGate(`<div class="notice warn"><strong>Un Pass actif est requis.</strong> Choisissez la durée d’affichage de vos annonces. <a href="premium.html?redirect=publier.html">Voir les Pass</a></div>`);
     }
     showToast(err.message || 'Publication impossible', 'error');
     button.disabled = false;
@@ -351,8 +351,9 @@ async function initPage() {
 
   try {
     const cfg = await API.stripeConfig();
-    premiumPriceLabel = cfg.priceLabel ? `${cfg.priceLabel} / ${cfg.intervalLabel || 'mois'}` : '';
-    document.getElementById('side-price').textContent = premiumPriceLabel || 'Stripe';
+    const cheapest = cfg.plans?.[0];
+    premiumPriceLabel = cheapest ? `${cheapest.priceLabel} · ${cheapest.durationLabel}` : '';
+    document.getElementById('side-price').textContent = premiumPriceLabel || 'Dès 20 $';
   } catch { /* prix indisponible */ }
 
   document.getElementById('premium-side').style.display = AUTH.hasPremium() ? 'none' : 'block';
@@ -360,7 +361,7 @@ async function initPage() {
   if (!AUTH.isLoggedIn()) {
     setGate(`
       <div class="notice warn" style="max-width:640px">
-        <strong>Connexion requise.</strong> Créez un compte gratuit pour commenter, puis activez le Pass Premium pour publier une annonce.
+        <strong>Connexion requise.</strong> Créez un compte gratuit pour commenter, puis choisissez un Pass pour publier une annonce.
         <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
           <a href="compte.html?redirect=${encodeURIComponent('publier.html')}" class="btn btn-primary btn-sm"><span>Se connecter / créer un compte</span></a>
           <a href="product.html" class="btn btn-secondary btn-sm"><span>Parcourir les annonces</span></a>
@@ -402,9 +403,9 @@ async function initPage() {
   if (!AUTH.hasPremium()) {
     setGate(`
       <div class="notice warn" style="max-width:640px">
-        <strong>Publication réservée aux membres Premium.</strong> Consulter et commenter reste gratuit.
+        <strong>Publication réservée aux membres avec un Pass actif.</strong> Consulter et commenter reste gratuit.
         <div style="margin-top:12px">
-          <a href="premium.html?redirect=publier.html" class="btn btn-primary btn-sm"><span>Activer le Pass Premium${premiumPriceLabel ? ` — ${esc(premiumPriceLabel)}` : ''}</span></a>
+          <a href="premium.html?redirect=publier.html" class="btn btn-primary btn-sm"><span>Choisir mon Pass${premiumPriceLabel ? ` — dès ${esc(premiumPriceLabel)}` : ''}</span></a>
         </div>
       </div>`);
     return;

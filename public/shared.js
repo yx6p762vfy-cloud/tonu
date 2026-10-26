@@ -137,8 +137,9 @@ const AUTH = {
   updateNavLabel() {
     const user = this.currentUser();
     const label = user ? user.pseudo : 'Compte';
+    const suffix = user && user.hasPremium && user.planLabel ? ` · ${user.planLabel}` : '';
     document.querySelectorAll('.nav-account-label').forEach((el) => {
-      el.textContent = user && user.hasPremium ? `${label} · Premium` : label;
+      el.textContent = `${label}${suffix}`;
     });
     document.querySelectorAll('.nav-publish-hint').forEach((el) => {
       el.style.display = this.hasPremium() ? 'none' : 'inline';
@@ -402,7 +403,7 @@ function requireLogin(redirectTo) {
 function requirePremium(redirectTo) {
   if (!requireLogin(redirectTo)) return false;
   if (AUTH.hasPremium()) return true;
-  showToast('Abonnement Premium requis pour publier', 'error');
+  showToast('Un Pass actif est requis pour publier', 'error');
   setTimeout(() => {
     const target = safeRedirect(redirectTo || 'publier.html', 'publier.html');
     window.location.href = `premium.html?redirect=${encodeURIComponent(target)}`;
@@ -417,6 +418,9 @@ function renderAnnonceCard(a, idx) {
     ? `<img src="${esc(imgSrc)}" alt="${esc(a.title)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
     : '';
   const badge = a.status && a.status !== 'approved' ? statusLabel(a.status) : a.category;
+  const planBadge = a.authorPlan
+    ? `<div class="pc-plan ${esc(a.authorPlan)}">${esc(a.authorPlanLabel)}</div>`
+    : '';
   const commentMeta = a.commentCount
     ? `<span class="pc-meta">${a.commentCount} commentaire${a.commentCount > 1 ? 's' : ''}</span>`
     : '';
@@ -428,6 +432,7 @@ function renderAnnonceCard(a, idx) {
         <div class="pc-cloth" style="background:${CLOTH_COLORS[idx % CLOTH_COLORS.length]}"></div>
       </div>
       <div class="pc-badge">${esc(badge || 'Annonce')}</div>
+      ${planBadge}
     </div>
     <div class="pc-info">
       <div class="pc-brand">${esc(a.pseudo)}${a.age ? ` · ${esc(a.age)} ans` : ''}</div>
@@ -455,15 +460,15 @@ function buildNavHTML({ activePage = '' } = {}) {
         <span class="top-bar-item"><span class="dot">✦</span> ${SITE.minAge}+ uniquement · discrétion et respect</span>
         <span class="top-bar-item"><span class="dot">✦</span> Publication avec photos réservée aux membres Premium</span>
         <span class="top-bar-item"><span class="dot">✦</span> Consulter et commenter gratuitement</span>
-        <span class="top-bar-item"><span class="dot">✦</span> Paiement sécurisé Stripe</span>
+        <span class="top-bar-item"><span class="dot">✦</span> Paiement sécurisé par carte bancaire</span>
         <span class="top-bar-item"><span class="dot">✦</span> ${SITE.minAge}+ uniquement · discrétion et respect</span>
-        <span class="top-bar-item"><span class="dot">✦</span> Publication avec photos réservée aux membres Premium</span>
+        <span class="top-bar-item"><span class="dot">✦</span> Publication avec photos réservée aux membres avec Pass</span>
         <span class="top-bar-item"><span class="dot">✦</span> Consulter et commenter gratuitement</span>
-        <span class="top-bar-item"><span class="dot">✦</span> Paiement sécurisé Stripe</span>
+        <span class="top-bar-item"><span class="dot">✦</span> Paiement sécurisé par carte bancaire</span>
       </div>
     </div>
     <div class="top-bar-right">
-      <a href="premium.html" class="top-bar-link">Pass Premium</a>
+      <a href="premium.html" class="top-bar-link">Les Pass</a>
       <a href="faq.html" class="top-bar-link">Aide</a>
     </div>
   </div>
@@ -476,9 +481,9 @@ function buildNavHTML({ activePage = '' } = {}) {
       <ul class="nav-links">
         <li class="${activePage === 'annonces' ? 'active' : ''}"><a href="product.html">Annonces</a></li>
         <li class="${activePage === 'publier' ? 'active' : ''}">
-          <a href="publier.html">Publier <span class="nav-publish-hint">Premium</span></a>
+          <a href="publier.html">Publier <span class="nav-publish-hint">Pass</span></a>
         </li>
-        <li class="${activePage === 'premium' ? 'active' : ''}"><a href="premium.html">Premium</a></li>
+        <li class="${activePage === 'premium' ? 'active' : ''}"><a href="premium.html">Les Pass</a></li>
         <li><a href="product.html?cat=Rencontre">Rencontres</a></li>
         <li><a href="product.html?cat=Sortie">Sorties</a></li>
         <li><a href="product.html?cat=Couple">Couples</a></li>
@@ -501,7 +506,7 @@ function buildNavHTML({ activePage = '' } = {}) {
       <li><a href="index.html">Accueil <span>→</span></a></li>
       <li><a href="product.html">Annonces <span>→</span></a></li>
       <li><a href="publier.html">Publier <span>→</span></a></li>
-      <li><a href="premium.html">Premium <span>→</span></a></li>
+      <li><a href="premium.html">Les Pass <span>→</span></a></li>
       <li><a href="compte.html">Mon compte <span>→</span></a></li>
       <li class="nav-admin-link"><a href="admin.html">Modération <span>→</span></a></li>
     </ul>
@@ -517,14 +522,14 @@ function buildFooterHTML() {
         <div class="footer-logo-row">
           <img src="TonuIcon.jpeg" alt="${SITE.name}" class="footer-logo-img"/>
         </div>
-        <p class="footer-tagline">${SITE.tagline}. Consultez les annonces gratuitement ; publiez la vôtre avec photos grâce au Pass Premium. Contenu réservé aux personnes majeures.</p>
+        <p class="footer-tagline">${SITE.tagline}. Consultez les annonces gratuitement ; publiez la vôtre avec photos grâce à un Pass. Contenu réservé aux personnes majeures.</p>
       </div>
       <div class="footer-col">
         <div class="footer-col-title">Plateforme</div>
         <ul>
           <li><a href="product.html">Toutes les annonces</a></li>
           <li><a href="publier.html">Publier une annonce</a></li>
-          <li><a href="premium.html">Pass Premium</a></li>
+          <li><a href="premium.html">Les Pass</a></li>
           <li><a href="compte.html">Mon compte</a></li>
         </ul>
       </div>

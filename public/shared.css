@@ -376,6 +376,12 @@ body{
 }
 .pc-badge.new{background:var(--white);color:#0B0B0F}
 .pc-badge.sale{background:var(--red-solid);color:#fff}
+.pc-plan{
+  position:absolute;top:12px;right:12px;z-index:2;
+  font-family:var(--f-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+  padding:4px 9px;background:rgba(8,8,11,.78);border:1px solid var(--gold);color:var(--gold3);
+}
+.pc-plan.elite{background:var(--grad);border-color:transparent;color:#fff}
 .pc-quick-add{
   position:absolute;bottom:0;left:0;right:0;
   background:var(--grad);color:#fff;

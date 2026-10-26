@@ -219,7 +219,6 @@ router.get(
         banned: !!row.banned,
         adCount: row.ad_count,
         commentCount: row.comment_count,
-        stripeSubscribed: !!row.stripe_subscription_id,
       })),
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     });

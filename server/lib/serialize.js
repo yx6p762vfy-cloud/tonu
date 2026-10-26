@@ -1,6 +1,7 @@
 const path = require('path');
 const config = require('../config');
 const storage = require('./storage');
+const plans = require('./plans');
 
 function isoDate(value) {
   if (!value) return null;
@@ -41,21 +42,26 @@ function mapAnnonceRow(row, photos, user, baseUrl, extra = {}) {
     rejectionReason: row.rejection_reason || null,
     userPosted: !!user && !String(user.id).startsWith('demo-'),
     authorId: row.user_id,
+    authorPlan: user?.plan || null,
+    authorPlanLabel: user?.plan ? plans.planLabel(user.plan) : null,
     commentCount: extra.commentCount ?? 0,
   };
 }
 
 function mapUserPublic(u) {
   if (!u) return null;
+  const active = !!u.premium_until && new Date(u.premium_until) > new Date();
+  const plan = active ? plans.normalizedPlan(u.plan) : null;
   return {
     id: u.id,
     email: u.email,
     pseudo: u.pseudo,
     age: u.age,
     role: u.role,
-    premiumUntil: u.premium_until,
-    hasPremium: !!u.premium_until && new Date(u.premium_until) > new Date(),
-    stripeCustomerId: u.stripe_customer_id ? true : false,
+    plan,
+    planLabel: plans.planLabel(plan),
+    premiumUntil: active ? u.premium_until : null,
+    hasPremium: active,
     createdAt: u.created_at,
   };
 }

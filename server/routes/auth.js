@@ -10,7 +10,6 @@ const { asyncHandler } = require('../lib/http');
 const { mapUserPublic } = require('../lib/serialize');
 const validation = require('../lib/validation');
 const { deleteFiles } = require('../lib/images');
-const { getStripe } = require('../lib/stripe');
 
 const router = express.Router();
 
@@ -229,15 +228,6 @@ router.delete(
         [req.user.id]
       )
     ).map((row) => row.file_name);
-
-    const stripe = getStripe();
-    if (stripe && req.user.stripe_subscription_id) {
-      try {
-        await stripe.subscriptions.cancel(req.user.stripe_subscription_id);
-      } catch (err) {
-        console.error('[account] Annulation Stripe impossible :', err.message);
-      }
-    }
 
     await deleteFiles(files);
     await db.run('DELETE FROM users WHERE id = ?', [req.user.id]);

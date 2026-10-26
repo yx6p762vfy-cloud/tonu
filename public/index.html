@@ -6,7 +6,7 @@
 <link rel="apple-touch-icon" href="TonuIcon.jpeg"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>tonú Privé — Rencontres adultes entre personnes majeures</title>
-<meta name="description" content="tonú Privé : annonces de rencontres entre adultes. Consultation gratuite, commentaires avec compte, publication avec photos via un abonnement Premium payé par Stripe. 18+ uniquement."/>
+<meta name="description" content="tonú Privé : annonces de rencontres entre adultes. Consultation gratuite, commentaires avec compte, publication avec photos grâce à un Pass payé par carte bancaire. 18+ uniquement."/>
 <meta property="og:title" content="tonú Privé — Rencontres adultes"/>
 <meta property="og:description" content="Annonces de rencontres entre adultes, modérées et réservées aux personnes majeures. 18+."/>
 <meta property="og:type" content="website"/>
@@ -123,10 +123,10 @@
   <div class="hero-dating-copy">
     <div class="eyebrow reveal">18+ · Modération · Respect</div>
     <h1 class="reveal d1">Rencontres<br><span class="hl">Privées.</span><br>Entre adultes.</h1>
-    <p class="reveal d2">Consultez les annonces gratuitement. Créez un compte pour commenter. Activez le Pass Premium pour publier la vôtre avec photos, en toute discrétion.</p>
+    <p class="reveal d2">Consultez les annonces gratuitement. Créez un compte pour commenter. Choisissez un Pass pour publier la vôtre avec photos, en toute discrétion.</p>
     <div class="hero-cta-row reveal d3">
       <a href="product.html" class="btn btn-primary"><span>Voir les annonces</span></a>
-      <a href="premium.html" class="btn btn-outline-gold"><span>Pass Premium</span></a>
+      <a href="premium.html" class="btn btn-outline-gold"><span>Les Pass</span></a>
     </div>
     <div class="hero-stats reveal d4">
       <div><div class="hero-stat-num" id="stat-annonces">—</div><div class="hero-stat-lbl">Annonces en ligne</div></div>
@@ -137,7 +137,7 @@
 </section>
 
 <div class="strip-dating">
-  <p>Consultation gratuite · Commentaires avec compte · Publication avec photos réservée aux membres Premium · Paiement sécurisé Stripe · 18+ uniquement</p>
+  <p>Consultation gratuite · Commentaires avec compte · Publication avec photos réservée aux membres avec un Pass · Paiement sécurisé par carte bancaire · 18+ uniquement</p>
 </div>
 
 <section class="featured-section">
@@ -165,8 +165,8 @@
   </div>
   <div class="how-card reveal d2">
     <div class="how-num">03</div>
-    <h3>Publier en Premium</h3>
-    <p>Activez l’abonnement par carte via Stripe pour publier jusqu’à 3 photos. Chaque annonce est validée par la modération avant sa mise en ligne.</p>
+    <h3>Publier avec un Pass</h3>
+    <p>Choisissez la durée d’affichage de vos annonces et payez par carte bancaire en toute sécurité. Jusqu’à 3 photos, validées par la modération avant leur mise en ligne.</p>
   </div>
 </div>
 
@@ -178,16 +178,16 @@
       <li>Jusqu’à 3 photos par annonce</li>
       <li>Modification et suppression depuis votre compte</li>
       <li>Validation par la modération avant publication</li>
-      <li>Paiement sécurisé par Stripe — annulation via le portail client</li>
+      <li>Paiement sécurisé par carte bancaire — sans reconduction automatique</li>
     </ul>
     <a href="publier.html" class="btn btn-primary reveal d3"><span>Publier une annonce</span></a>
   </div>
   <div class="premium-cta-visual reveal d2">
     <div class="premium-box">
-      <div class="eyebrow" style="justify-content:center">Pass Premium</div>
-      <div class="price" id="home-premium-price">Tarif sur Stripe</div>
-      <p style="font-size:12px;color:var(--grey3);margin-bottom:20px;line-height:1.6">Publication d’annonces avec photos · abonnement sans engagement</p>
-      <a href="premium.html" class="btn btn-outline-gold btn-full"><span>S’abonner</span></a>
+      <div class="eyebrow" style="justify-content:center">Les Pass</div>
+      <div class="price" id="home-premium-price">Dès 20 $</div>
+      <p style="font-size:12px;color:var(--grey3);margin-bottom:20px;line-height:1.6">2 semaines, 1 mois ou 2 mois d’affichage · annonces prioritaires avec Elite</p>
+      <a href="premium.html" class="btn btn-outline-gold btn-full"><span>Voir les Pass</span></a>
     </div>
   </div>
 </div>
@@ -224,10 +224,11 @@ async function loadHome() {
 
   try {
     const cfg = await API.stripeConfig();
+    const cheapest = cfg.plans?.[0];
     const priceEl = document.getElementById('home-premium-price');
-    priceEl.innerHTML = cfg.price?.label
-      ? `${esc(cfg.price.label)}<small>Abonnement récurrent</small>`
-      : 'Tarif sur Stripe<small>Abonnement récurrent</small>';
+    priceEl.innerHTML = cheapest
+      ? `Dès ${esc(cheapest.priceLabel)}<small>${esc(cheapest.durationLabel)} d’affichage</small>`
+      : 'Dès 20 $<small>2 semaines d’affichage</small>';
   } catch { /* tarif par défaut */ }
 }
 

@@ -52,7 +52,7 @@
 
     <div id="panel-login">
       <h1>Connexion</h1>
-      <p class="form-sub">Retrouvez vos annonces, vos commentaires et votre statut Premium.</p>
+      <p class="form-sub">Retrouvez vos annonces, vos commentaires et votre Pass.</p>
       <form class="auth-form" id="login-form" novalidate>
         <div class="field">
           <label for="login-email">Email</label>
@@ -146,17 +146,16 @@
       </form>
     </section>
 
-    <!-- Abonnement -->
+    <!-- Pass -->
     <section class="dash-card">
-      <h2>Abonnement</h2>
-      <p class="card-sub">La publication d’annonces avec photos nécessite le Pass Premium. Le paiement est traité par Stripe.</p>
+      <h2>Pass d’affichage</h2>
+      <p class="card-sub">La publication d’annonces avec photos nécessite un Pass actif. Le paiement se fait par carte bancaire via un prestataire sécurisé, sans reconduction automatique.</p>
       <div class="premium-state" id="premium-state"></div>
       <div class="dash-actions">
-        <a href="premium.html" class="btn btn-primary btn-sm" id="btn-subscribe"><span>Activer le Pass</span></a>
-        <button type="button" class="btn btn-secondary btn-sm" id="btn-portal" hidden><span>Gérer l’abonnement</span></button>
+        <a href="premium.html" class="btn btn-primary btn-sm" id="btn-subscribe"><span>Choisir un Pass</span></a>
       </div>
       <p class="photo-hint" style="margin-top:14px;font-family:var(--f-mono);font-size:9px;color:var(--grey2);line-height:1.7">
-        Annulation et factures disponibles depuis le portail Stripe. L’accès reste actif jusqu’à la fin de la période payée.
+        Un nouvel achat prolonge votre accès à partir de la date de fin actuelle. Vos annonces restent visibles tant que votre Pass est actif.
       </p>
     </section>
 
@@ -196,7 +195,7 @@
     <!-- Suppression -->
     <section class="dash-card danger-card dash-full">
       <h2>Supprimer mon compte</h2>
-      <p class="card-sub">La suppression est définitive : profil, annonces, photos et commentaires sont effacés. L’abonnement Stripe est annulé s’il est actif.</p>
+      <p class="card-sub">La suppression est définitive : profil, annonces, photos et commentaires sont effacés.</p>
       <div class="dash-actions">
         <button type="button" class="btn btn-danger btn-sm" id="btn-delete-account"><span>Supprimer définitivement</span></button>
       </div>
@@ -295,7 +294,7 @@ async function renderDashboard() {
   document.getElementById('prof-created').textContent = formatDate(u.createdAt) || '—';
 
   const badge = document.getElementById('user-premium-badge');
-  badge.textContent = u.hasPremium ? 'Premium actif' : 'Compte gratuit';
+  badge.textContent = u.hasPremium ? `Pass ${u.planLabel || ''} actif` : 'Compte gratuit';
   badge.style.borderColor = u.hasPremium ? 'var(--gold)' : 'var(--black4)';
   badge.style.color = u.hasPremium ? 'var(--gold3)' : 'var(--grey3)';
 
@@ -310,21 +309,21 @@ async function renderDashboard() {
 
   const state = document.getElementById('premium-state');
   if (u.hasPremium) {
-    state.innerHTML = `<strong>Premium actif</strong><br>Valide jusqu’au ${esc(new Date(u.premiumUntil).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }))}.`;
-    document.getElementById('btn-subscribe').hidden = true;
+    state.innerHTML = `<strong>Pass ${esc(u.planLabel || '')} actif</strong><br>Valide jusqu’au ${esc(new Date(u.premiumUntil).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }))}.`;
+    document.getElementById('btn-subscribe').hidden = false;
+    document.getElementById('btn-subscribe').querySelector('span').textContent = 'Prolonger mon Pass';
   } else {
-    state.innerHTML = 'Aucun abonnement actif.<br>Consultation et commentaires gratuits.';
+    state.innerHTML = 'Aucun Pass actif.<br>Consultation et commentaires gratuits.';
     document.getElementById('btn-subscribe').hidden = false;
   }
-  document.getElementById('btn-portal').hidden = !u.stripeCustomerId;
 
   try {
     const cfg = await API.stripeConfig();
-    const subscribeBtn = document.getElementById('btn-subscribe');
-    if (cfg.priceLabel && !u.hasPremium) {
-      subscribeBtn.querySelector('span').textContent = `Activer — ${cfg.priceLabel} / ${cfg.intervalLabel || 'mois'}`;
+    const cheapest = cfg.plans?.[0];
+    if (cheapest && !u.hasPremium) {
+      document.getElementById('btn-subscribe').querySelector('span').textContent = `Choisir un Pass — dès ${cheapest.priceLabel}`;
     }
-  } catch { /* prix indisponible */ }
+  } catch { /* tarif indisponible */ }
 
   AUTH.updateNavLabel();
 }
@@ -368,18 +367,6 @@ document.getElementById('password-form').addEventListener('submit', async (e) =>
   } catch (err) {
     showToast(err.message || 'Modification impossible', 'error');
   } finally {
-    button.disabled = false;
-  }
-});
-
-document.getElementById('btn-portal').addEventListener('click', async () => {
-  const button = document.getElementById('btn-portal');
-  button.disabled = true;
-  try {
-    const { url } = await API.stripePortal();
-    window.location.href = url;
-  } catch (err) {
-    showToast(err.message || 'Portail Stripe indisponible', 'error');
     button.disabled = false;
   }
 });

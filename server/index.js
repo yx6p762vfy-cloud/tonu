@@ -1,6 +1,7 @@
 const config = require('./config');
 const db = require('./db');
 const storage = require('./lib/storage');
+const { stripeConfigured } = require('./lib/stripe');
 
 async function start() {
   config.assertConfig();
@@ -12,8 +13,8 @@ async function start() {
   const app = require('./app');
   const server = app.listen(config.port, () => {
     console.log(`[server] tonú Privé → ${config.baseUrl} (${config.nodeEnv})`);
-    if (!config.stripeSecretKey || !config.stripePriceId) {
-      console.warn('[config] Stripe non configuré — les paiements sont désactivés');
+    if (!stripeConfigured()) {
+      console.warn('[config] Paiement non configuré — les achats de Pass sont désactivés');
     }
     if (!config.stripeWebhookSecret) {
       console.warn('[config] STRIPE_WEBHOOK_SECRET manquant — webhooks non signés en développement');

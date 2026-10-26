@@ -1,5 +1,6 @@
 const Stripe = require('stripe');
 const config = require('../config');
+const plans = require('./plans');
 
 let client = null;
 
@@ -10,17 +11,7 @@ function getStripe() {
 }
 
 function stripeConfigured() {
-  return !!(config.stripeSecretKey && config.stripePriceId);
+  return !!(config.stripeSecretKey && plans.list().some((plan) => plan.priceId));
 }
 
-function subscriptionPeriodEnd(subscription) {
-  const raw = subscription?.current_period_end
-    || subscription?.items?.data?.[0]?.current_period_end;
-  return raw ? new Date(raw * 1000) : null;
-}
-
-function subscriptionGrantsAccess(subscription) {
-  return ['active', 'trialing', 'past_due'].includes(subscription?.status);
-}
-
-module.exports = { getStripe, stripeConfigured, subscriptionPeriodEnd, subscriptionGrantsAccess };
+module.exports = { getStripe, stripeConfigured };

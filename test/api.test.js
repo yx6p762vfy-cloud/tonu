@@ -263,9 +263,11 @@ before(async () => {
     ADMIN_PASSWORD,
     SUPPORT_EMAIL: 'support@test.local',
     SEED_DEMO: 'true',
-    STRIPE_SECRET_KEY: '',
+    STRIPE_SECRET_KEY: 'sk_test_fake_key_for_webhooks',
     STRIPE_WEBHOOK_SECRET: '',
-    STRIPE_PRICE_ID: '',
+    STRIPE_PRICE_PREMIUM: '',
+    STRIPE_PRICE_GOLDEN: '',
+    STRIPE_PRICE_ELITE: '',
   };
 
   child = spawn(process.execPath, [path.join(ROOT, 'server', 'index.js')], {
@@ -554,7 +556,7 @@ test('commentaires : compte obligatoire, création et suppression contrôlée', 
   assert.ok(!afterRemoval.json.comments.some((c) => c.id === commentId));
 });
 
-test('publication : Premium requis, image traitée et EXIF supprimé', async () => {
+test('publication : Pass requis, image traitée et EXIF supprimé', async () => {
   const draft = {
     title: 'Rencontre test premium',
     description: 'Annonce de test automatisé avec une description suffisamment longue et claire.',
@@ -569,10 +571,11 @@ test('publication : Premium requis, image traitée et EXIF supprimé', async () 
     token: accounts.user1.token,
     body: draft,
   });
-  expectError(gated, 402, /premium/i, 'publication sans abonnement');
+  expectError(gated, 402, /pass/i, 'publication sans Pass');
 
   const until = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-  const granted = await db.query('UPDATE users SET premium_until = $1 WHERE email = $2', [
+  const granted = await db.query('UPDATE users SET plan = $1, premium_until = $2 WHERE email = $3', [
+    'golden',
     until,
     accounts.user1.email,
   ]);
@@ -1007,34 +1010,93 @@ test('compte : export RGPD, modification et suppression définitive', async () =
   );
 });
 
-test('Stripe non configuré : dégradation propre sans paiement', async () => {
+test('paiement : trois offres, achat à l’unité et activation idempotente', async () => {
   const configRes = await request('/api/stripe/config');
-  expectStatus(configRes, 200, 'configuration Stripe');
+  expectStatus(configRes, 200, 'configuration des offres');
   assert.equal(configRes.json.configured, false);
-  assert.equal(configRes.json.price, null);
+  assert.deepEqual(
+    configRes.json.plans.map((plan) => plan.key),
+    ['premium', 'golden', 'elite'],
+    'les trois offres sont exposées'
+  );
+
+  const golden = configRes.json.plans.find((plan) => plan.key === 'golden');
+  assert.equal(golden.priceLabel, '30 $');
+  assert.equal(golden.durationLabel, '1 mois');
+  assert.equal(golden.recommended, true);
+  assert.equal(golden.available, false, 'aucun prix Stripe configuré en test');
 
   expectError(
     await request('/api/stripe/create-checkout-session', {
       method: 'POST',
       token: accounts.user2.token,
-      body: { redirect: 'publier.html' },
+      body: { plan: 'golden', redirect: 'publier.html' },
     }),
     503,
-    /configuré/i,
-    'checkout sans Stripe'
+    /disponible/i,
+    'checkout sans prix configuré'
   );
 
-  expectError(
-    await request('/api/stripe/portal', { method: 'POST', token: accounts.user2.token }),
-    503,
-    /configuré/i,
-    'portail sans Stripe'
+  const userId = accounts.user2.id;
+  const before = await request('/api/auth/me', { token: accounts.user2.token });
+  assert.equal(before.json.user.hasPremium, false);
+
+  const paidEvent = {
+    id: `evt_golden_${Date.now()}`,
+    type: 'checkout.session.completed',
+    data: {
+      object: {
+        mode: 'payment',
+        payment_status: 'paid',
+        client_reference_id: userId,
+        metadata: { userId, plan: 'golden' },
+      },
+    },
+  };
+  const webhook = await request('/api/stripe/webhook', { method: 'POST', body: paidEvent });
+  expectStatus(webhook, 200, 'webhook de paiement');
+  assert.equal(webhook.json.duplicate, false);
+
+  const afterPayment = await request('/api/auth/me', { token: accounts.user2.token });
+  assert.equal(afterPayment.json.user.hasPremium, true);
+  assert.equal(afterPayment.json.user.plan, 'golden');
+  const goldenDays = (new Date(afterPayment.json.user.premiumUntil) - Date.now()) / 86_400_000;
+  assert.ok(goldenDays > 29 && goldenDays < 31, `durée Golden d’environ 30 jours (${goldenDays})`);
+
+  const duplicate = await request('/api/stripe/webhook', { method: 'POST', body: paidEvent });
+  expectStatus(duplicate, 200, 'webhook rejoué');
+  assert.equal(duplicate.json.duplicate, true);
+  const afterDuplicate = await request('/api/auth/me', { token: accounts.user2.token });
+  assert.equal(
+    afterDuplicate.json.user.premiumUntil,
+    afterPayment.json.user.premiumUntil,
+    'un événement rejoué ne prolonge pas le Pass'
   );
 
-  const webhook = await request('/api/stripe/webhook', {
-    method: 'POST',
-    body: { id: 'evt_test', type: 'checkout.session.completed', data: { object: {} } },
-  });
-  expectStatus(webhook, 503, 'webhook sans Stripe');
-  assert.match(webhook.text, /Stripe non configuré/);
+  const eliteEvent = {
+    id: `evt_elite_${Date.now()}`,
+    type: 'checkout.session.async_payment_succeeded',
+    data: {
+      object: {
+        mode: 'payment',
+        payment_status: 'paid',
+        metadata: { userId, plan: 'elite' },
+      },
+    },
+  };
+  expectStatus(await request('/api/stripe/webhook', { method: 'POST', body: eliteEvent }), 200, 'webhook Elite');
+
+  const afterElite = await request('/api/auth/me', { token: accounts.user2.token });
+  assert.equal(afterElite.json.user.plan, 'elite');
+  const eliteDays = (new Date(afterElite.json.user.premiumUntil) - Date.now()) / 86_400_000;
+  assert.ok(eliteDays > 89 && eliteDays < 91, `durées cumulées d’environ 90 jours (${eliteDays})`);
+
+  await db.query("UPDATE users SET plan = 'elite', premium_until = now() + interval '60 days' WHERE id = 'demo-a2'");
+  try {
+    const list = await request('/api/annonces?limit=30');
+    expectStatus(list, 200, 'annonces triées par priorité');
+    assert.equal(list.json.annonces[0].id, 'a2', 'une annonce Elite apparaît en premier');
+  } finally {
+    await db.query("UPDATE users SET plan = 'golden', premium_until = now() + interval '10 years' WHERE id = 'demo-a2'");
+  }
 });
