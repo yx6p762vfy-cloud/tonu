@@ -427,6 +427,7 @@
     <button class="filter-tag" data-cat="Sortie" onclick="setCat('Sortie',this)">Sorties</button>
     <button class="filter-tag" data-cat="Discussion" onclick="setCat('Discussion',this)">Discussion</button>
     <button class="filter-tag" data-cat="Couple" onclick="setCat('Couple',this)">Couples</button>
+    <button class="filter-tag" data-cat="Escorte" onclick="setCat('Escorte',this)">Escortes</button>
   </div>
   <div class="listing-grid" id="listing-grid"></div>
   <div class="load-more-wrap" id="load-more-wrap" style="display:none">
@@ -518,7 +519,7 @@ initShared();
 
 const params = new URLSearchParams(location.search);
 const pid = params.get('id');
-const CATEGORIES = ['Rencontre', 'Sortie', 'Discussion', 'Couple'];
+const CATEGORIES = ['Rencontre', 'Sortie', 'Discussion', 'Couple', 'Escorte'];
 const GENDERS = ['Femme', 'Homme', 'Couple', 'Autre'];
 const SORTS = ['recent', 'old', 'city', 'comments'];
 

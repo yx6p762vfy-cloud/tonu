@@ -34,5 +34,7 @@ test('validation des champs utilisateur', () => {
   assert.equal(validation.city('A'), null);
   assert.equal(validation.commentContent('a'), null);
   assert.equal(validation.oneOf('sortie', validation.CATEGORIES), 'Sortie');
+  assert.equal(validation.oneOf('escorte', validation.CATEGORIES), 'Escorte');
+  assert.equal(validation.oneOf('escorte', validation.INTENTIONS), 'Escorte');
   assert.equal(validation.oneOf('inexistant', validation.CATEGORIES), null);
 });

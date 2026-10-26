@@ -1,7 +1,7 @@
 const config = require('../config');
 
-const CATEGORIES = ['Rencontre', 'Sortie', 'Discussion', 'Couple'];
-const INTENTIONS = ['Rencontre', 'Rencontre sérieuse', 'Sorties', 'Discussion', 'Couple'];
+const CATEGORIES = ['Rencontre', 'Sortie', 'Discussion', 'Couple', 'Escorte'];
+const INTENTIONS = ['Rencontre', 'Rencontre sérieuse', 'Sorties', 'Discussion', 'Couple', 'Escorte'];
 const GENDERS = ['Homme', 'Femme', 'Couple', 'Autre'];
 const STATUSES = ['pending', 'approved', 'rejected'];
 const REPORT_REASONS = {

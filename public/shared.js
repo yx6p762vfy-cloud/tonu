@@ -487,6 +487,7 @@ function buildNavHTML({ activePage = '' } = {}) {
         <li><a href="product.html?cat=Rencontre">Rencontres</a></li>
         <li><a href="product.html?cat=Sortie">Sorties</a></li>
         <li><a href="product.html?cat=Couple">Couples</a></li>
+        <li><a href="product.html?cat=Escorte">Escortes</a></li>
         <li class="nav-admin-link"><a href="admin.html">Modération</a></li>
       </ul>
       <div class="nav-actions">
@@ -540,6 +541,7 @@ function buildFooterHTML() {
           <li><a href="product.html?cat=Sortie">Sorties</a></li>
           <li><a href="product.html?cat=Discussion">Discussion</a></li>
           <li><a href="product.html?cat=Couple">Couples</a></li>
+          <li><a href="product.html?cat=Escorte">Escortes</a></li>
         </ul>
       </div>
       <div class="footer-col">
