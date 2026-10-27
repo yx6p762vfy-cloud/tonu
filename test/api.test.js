@@ -818,6 +818,75 @@ test('administration : modération, rôles, suspensions et protections', async (
   );
 });
 
+test('commentaires : le publicateur répond à son annonce', async () => {
+  const top = await request(`/api/comments/${adId}`, {
+    method: 'POST',
+    token: accounts.user2.token,
+    body: { content: 'Bonjour, êtes-vous disponible ce week-end ?' },
+  });
+  expectStatus(top, 201, 'commentaire visiteur');
+  assert.equal(top.json.comment.parentId, null);
+
+  const publisherView = await request(`/api/comments/${adId}`, { token: accounts.user1.token });
+  expectStatus(publisherView, 200, 'lecture publicateur');
+  const topForPublisher = publisherView.json.comments.find((c) => c.id === top.json.comment.id);
+  assert.ok(topForPublisher);
+  assert.equal(topForPublisher.canReply, true);
+
+  const visitorView = await request(`/api/comments/${adId}`, { token: accounts.user2.token });
+  const topForVisitor = visitorView.json.comments.find((c) => c.id === top.json.comment.id);
+  assert.equal(topForVisitor.canReply, false);
+
+  const reply = await request(`/api/comments/${adId}`, {
+    method: 'POST',
+    token: accounts.user1.token,
+    body: { content: 'Oui, je vous réponds en privé.', parentId: top.json.comment.id },
+  });
+  expectStatus(reply, 201, 'réponse du publicateur');
+  assert.equal(reply.json.comment.parentId, top.json.comment.id);
+  assert.equal(reply.json.comment.isPublisher, true);
+
+  expectError(
+    await request(`/api/comments/${adId}`, {
+      method: 'POST',
+      token: accounts.user2.token,
+      body: { content: 'Réponse interdite', parentId: top.json.comment.id },
+    }),
+    403,
+    /auteur de l’annonce/i,
+    'réponse réservée au publicateur'
+  );
+
+  expectError(
+    await request(`/api/comments/${adId}`, {
+      method: 'POST',
+      token: accounts.user1.token,
+      body: { content: 'Réponse imbriquée', parentId: reply.json.comment.id },
+    }),
+    400,
+    /réponse/i,
+    'pas de réponse à une réponse'
+  );
+
+  const nested = await request(`/api/comments/${adId}`);
+  expectStatus(nested, 200, 'lecture imbriquée anonyme');
+  const thread = nested.json.comments.find((c) => c.id === top.json.comment.id);
+  assert.equal(thread.replies.length, 1);
+  assert.equal(thread.replies[0].id, reply.json.comment.id);
+  assert.equal(thread.replies[0].canReply, false);
+
+  const removed = await request(`/api/comments/${adId}/${top.json.comment.id}`, {
+    method: 'DELETE',
+    token: accounts.user2.token,
+  });
+  expectStatus(removed, 200, 'suppression du commentaire parent');
+
+  const afterCascade = await request(`/api/comments/${adId}`);
+  assert.ok(!afterCascade.json.comments.some((c) => c.id === top.json.comment.id));
+  const allReplies = afterCascade.json.comments.flatMap((c) => c.replies || []);
+  assert.ok(!allReplies.some((c) => c.id === reply.json.comment.id), 'les réponses sont supprimées en cascade');
+});
+
 test('signalements : motifs, propriété du contenu et doublons', async () => {
   const comment = await request('/api/comments/a1', {
     method: 'POST',

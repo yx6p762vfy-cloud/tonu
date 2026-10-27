@@ -18,14 +18,18 @@ function canAccess(annonce, user) {
   return user.id === annonce.user_id || ['admin', 'moderator'].includes(user.role);
 }
 
-function mapComment(row, user) {
+function mapComment(row, user, annonce) {
   const isStaff = !!user && ['admin', 'moderator'].includes(user.role);
+  const isPublisher = !!annonce && row.user_id === annonce.user_id;
   return {
     id: row.id,
     content: row.content,
     createdAt: row.created_at,
+    parentId: row.parent_id || null,
     user: { pseudo: row.pseudo, age: row.age },
     isOwner: !!user && user.id === row.user_id,
+    isPublisher,
+    canReply: !!user && !!annonce && user.id === annonce.user_id && !row.parent_id && row.user_id !== user.id,
     canDelete: !!user && (user.id === row.user_id || isStaff),
   };
 }
@@ -49,7 +53,22 @@ router.get(
       [req.params.annonceId]
     );
 
-    res.json({ comments: rows.map((row) => mapComment(row, req.user)) });
+    const byId = new Map();
+    rows.forEach((row) => {
+      const comment = mapComment(row, req.user, annonce);
+      comment.replies = [];
+      byId.set(comment.id, comment);
+    });
+
+    const threads = [];
+    rows.forEach((row) => {
+      const comment = byId.get(row.id);
+      const parent = row.parent_id ? byId.get(row.parent_id) : null;
+      if (parent && !parent.parentId) parent.replies.push(comment);
+      else threads.push(comment);
+    });
+
+    res.json({ comments: threads });
   })
 );
 
@@ -70,12 +89,27 @@ router.post(
       return res.status(400).json({ error: 'Commentaire trop court (2 caractères minimum)' });
     }
 
+    const parentId = validation.text(req.body.parentId, 64) || null;
+    if (parentId) {
+      if (req.user.id !== annonce.user_id) {
+        return res.status(403).json({ error: 'Seul l’auteur de l’annonce peut répondre aux commentaires' });
+      }
+      const parent = await db.get('SELECT id, annonce_id, parent_id FROM comments WHERE id = ?', [parentId]);
+      if (!parent || parent.annonce_id !== annonce.id) {
+        return res.status(404).json({ error: 'Commentaire introuvable' });
+      }
+      if (parent.parent_id) {
+        return res.status(400).json({ error: 'Impossible de répondre à une réponse' });
+      }
+    }
+
     const id = randomUUID();
-    await db.run('INSERT INTO comments (id, annonce_id, user_id, content) VALUES (?, ?, ?, ?)', [
+    await db.run('INSERT INTO comments (id, annonce_id, user_id, content, parent_id) VALUES (?, ?, ?, ?, ?)', [
       id,
       annonce.id,
       req.user.id,
       content,
+      parentId,
     ]);
 
     const row = await db.get(
@@ -85,7 +119,7 @@ router.post(
       [id]
     );
 
-    res.status(201).json({ comment: mapComment(row, req.user) });
+    res.status(201).json({ comment: mapComment(row, req.user, annonce) });
   })
 );
 
@@ -103,7 +137,10 @@ router.delete(
       return res.status(403).json({ error: 'Accès refusé' });
     }
 
-    await db.run('DELETE FROM comments WHERE id = ?', [comment.id]);
+    await db.tx(async (t) => {
+      await t.run('DELETE FROM comments WHERE parent_id = ?', [comment.id]);
+      await t.run('DELETE FROM comments WHERE id = ?', [comment.id]);
+    });
     res.json({ ok: true });
   })
 );

@@ -102,10 +102,10 @@ const API = {
   listComments(annonceId) {
     return this.request(`/api/comments/${encodeURIComponent(annonceId)}`);
   },
-  createComment(annonceId, content) {
+  createComment(annonceId, content, parentId = null) {
     return this.request(`/api/comments/${encodeURIComponent(annonceId)}`, {
       method: 'POST',
-      body: { content },
+      body: { content, parentId },
     });
   },
   deleteComment(annonceId, commentId) {

@@ -807,29 +807,22 @@ async function loadComments(a) {
 
   try {
     const { comments } = await API.listComments(a.id);
-    title.textContent = `Commentaires${comments.length ? ` (${comments.length})` : ''}`;
+    const total = comments.reduce((n, c) => n + 1 + (c.replies?.length || 0), 0);
+    title.textContent = `Commentaires${total ? ` (${total})` : ''}`;
 
     if (!comments.length) {
       list.innerHTML = '<p class="comment-login-hint">Aucun commentaire pour le moment. Soyez la première personne à réagir.</p>';
     } else {
-      list.innerHTML = comments.map((c) => `
-        <div class="comment-item">
-          <div class="comment-header">
-            <span class="comment-author">${esc(c.user.pseudo)}${c.user.age ? ` · ${esc(c.user.age)} ans` : ''}</span>
-            <span class="comment-date">${esc(formatDate(c.createdAt))}</span>
-          </div>
-          <div class="comment-body">${esc(c.content)}</div>
-          <div class="comment-actions">
-            ${c.canDelete ? `<button type="button" class="btn btn-sm btn-secondary" data-delete-comment="${esc(c.id)}"><span>Supprimer</span></button>` : ''}
-            ${AUTH.isLoggedIn() && !c.isOwner ? `<button type="button" class="comment-report" data-report-comment="${esc(c.id)}">Signaler</button>` : ''}
-          </div>
-        </div>`).join('');
+      list.innerHTML = comments.map((c) => renderCommentItem(c)).join('');
 
       list.querySelectorAll('[data-delete-comment]').forEach((btn) => {
         btn.addEventListener('click', () => deleteComment(a.id, btn.dataset.deleteComment));
       });
       list.querySelectorAll('[data-report-comment]').forEach((btn) => {
         btn.addEventListener('click', () => openReportDialog({ annonceId: a.id, commentId: btn.dataset.reportComment }));
+      });
+      list.querySelectorAll('[data-reply-to]').forEach((btn) => {
+        btn.addEventListener('click', () => openReplyForm(a, btn.dataset.replyTo));
       });
     }
 
@@ -853,6 +846,65 @@ async function loadComments(a) {
   } catch (err) {
     list.innerHTML = `<p class="comment-login-hint">${esc(err.message || 'Impossible de charger les commentaires.')}</p>`;
     formContainer.innerHTML = '';
+  }
+}
+
+function renderCommentItem(c, isReply = false) {
+  const replies = (c.replies || []).map((reply) => renderCommentItem(reply, true)).join('');
+  return `<div class="comment-item${isReply ? ' comment-reply' : ''}">
+    <div class="comment-header">
+      <span class="comment-author">${esc(c.user.pseudo)}${c.isPublisher ? '<span class="comment-badge">Auteur de l’annonce</span>' : ''}${c.user.age ? ` · ${esc(c.user.age)} ans` : ''}</span>
+      <span class="comment-date">${esc(formatDate(c.createdAt))}</span>
+    </div>
+    <div class="comment-body">${esc(c.content)}</div>
+    <div class="comment-actions">
+      ${c.canReply ? `<button type="button" class="comment-reply-btn" data-reply-to="${esc(c.id)}">Répondre</button>` : ''}
+      ${c.canDelete ? `<button type="button" class="btn btn-sm btn-secondary" data-delete-comment="${esc(c.id)}"><span>Supprimer</span></button>` : ''}
+      ${AUTH.isLoggedIn() && !c.isOwner ? `<button type="button" class="comment-report" data-report-comment="${esc(c.id)}">Signaler</button>` : ''}
+    </div>
+    <div data-reply-slot="${esc(c.id)}"></div>
+    ${replies ? `<div class="comment-replies">${replies}</div>` : ''}
+  </div>`;
+}
+
+function openReplyForm(annonce, commentId) {
+  const slot = [...document.querySelectorAll('[data-reply-slot]')].find((el) => el.dataset.replySlot === commentId);
+  if (!slot) return;
+  if (slot.querySelector('form')) {
+    slot.querySelector('textarea').focus();
+    return;
+  }
+  slot.innerHTML = `
+    <form class="comment-form comment-reply-form">
+      <label class="field" style="margin:0">
+        <span class="form-sub" style="margin:0;font-family:var(--f-mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase">Votre réponse</span>
+        <textarea class="comment-textarea" data-reply-text placeholder="Répondre à ce commentaire…" maxlength="500" required></textarea>
+      </label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button type="submit" class="btn btn-primary btn-sm"><span>Publier la réponse</span></button>
+        <button type="button" class="btn btn-secondary btn-sm" data-cancel-reply><span>Annuler</span></button>
+      </div>
+    </form>`;
+  const form = slot.querySelector('form');
+  form.addEventListener('submit', (e) => submitReply(e, annonce.id, commentId));
+  slot.querySelector('[data-cancel-reply]').addEventListener('click', () => { slot.innerHTML = ''; });
+  slot.querySelector('textarea').focus();
+}
+
+async function submitReply(e, annonceId, parentId) {
+  e.preventDefault();
+  const input = e.target.querySelector('[data-reply-text]');
+  const content = input.value.trim();
+  if (!content) return;
+  const button = e.target.querySelector('button[type="submit"]');
+  button.disabled = true;
+  try {
+    await API.createComment(annonceId, content, parentId);
+    showToast('Réponse publiée');
+    await loadComments({ id: annonceId });
+  } catch (err) {
+    showToast(err.message || 'Réponse impossible', 'error');
+    button.disabled = false;
   }
 }
 

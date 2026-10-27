@@ -136,6 +136,8 @@ const STATEMENTS = [
   `CREATE INDEX IF NOT EXISTS idx_annonces_created ON annonces(created_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_comments_annonce ON comments(annonce_id)`,
   `CREATE INDEX IF NOT EXISTS idx_comments_user ON comments(user_id)`,
+  `ALTER TABLE comments ADD COLUMN IF NOT EXISTS parent_id TEXT`,
+  `CREATE INDEX IF NOT EXISTS idx_comments_parent ON comments(parent_id)`,
   `CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status)`,
   `CREATE INDEX IF NOT EXISTS idx_reports_annonce ON reports(annonce_id)`,
 ];

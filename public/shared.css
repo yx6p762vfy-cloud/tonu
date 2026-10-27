@@ -622,6 +622,13 @@ footer{
 .comment-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
 .comment-report{background:transparent;border:none;color:var(--grey2);font-family:var(--f-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;padding:4px 0;text-decoration:underline}
 .comment-report:hover{color:var(--red)}
+.comment-reply-btn{background:transparent;border:none;color:var(--gold3);font-family:var(--f-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;padding:4px 0;text-decoration:underline}
+.comment-reply-btn:hover{color:var(--white)}
+.comment-badge{display:inline-block;margin-left:6px;padding:2px 6px;border:1px solid var(--gold);color:var(--gold3);font-size:8px;letter-spacing:.08em;text-transform:uppercase;vertical-align:middle}
+.comment-replies{display:flex;flex-direction:column;gap:10px;margin-top:12px;padding-left:16px;border-left:2px solid var(--black4)}
+.comment-reply{padding:12px 14px;background:var(--black2)}
+.comment-reply-form{margin-top:12px}
+@media(max-width:600px){.comment-replies{padding-left:10px}}
 
 /* Account */
 .account-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}

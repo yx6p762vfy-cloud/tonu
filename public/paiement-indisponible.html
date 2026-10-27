@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<link rel="icon" type="image/jpeg" href="TonuIcon.jpeg"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>tonú Privé — Paiement indisponible</title>
+<link rel="stylesheet" href="shared.css"/>
+<style>
+.unavailable-page{max-width:720px;text-align:center}
+.unavailable-page h1{font-family:var(--f-display);font-size:clamp(32px,5vw,48px);letter-spacing:.04em;text-transform:uppercase;line-height:1;margin-bottom:18px}
+.unavailable-page h1 .hl{background:var(--grad-text);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+.unavailable-page .page-intro{margin-left:auto;margin-right:auto}
+.unavailable-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:26px}
+</style>
+</head>
+<body>
+<div id="nav-root"></div>
+<div class="public-page unavailable-page">
+  <div class="eyebrow">Paiement</div>
+  <h1>Service de paiement<br><span class="hl">indisponible dans votre région.</span></h1>
+  <p class="page-intro">Le paiement par carte n’est pas disponible dans votre région pour le moment. Vous pouvez continuer à consulter les annonces et à commenter gratuitement.</p>
+  <p class="page-intro">Si vous pensez qu’il s’agit d’une erreur, contactez le support en précisant votre pays de résidence.</p>
+  <div class="unavailable-actions">
+    <a href="premium.html" class="btn btn-primary"><span>Retour aux Pass</span></a>
+    <a href="product.html" class="btn btn-secondary"><span>Voir les annonces</span></a>
+  </div>
+</div>
+<div id="footer-root"></div>
+<script src="api.js"></script>
+<script src="shared.js"></script>
+<script>
+document.getElementById('nav-root').innerHTML = buildNavHTML({ activePage: 'premium' });
+document.getElementById('footer-root').innerHTML = buildFooterHTML();
+initShared();
+</script>
+</body>
+</html>
