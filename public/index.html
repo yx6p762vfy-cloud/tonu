@@ -217,9 +217,10 @@ async function loadHome() {
 
   try {
     const stats = await API.stats();
-    document.getElementById('stat-annonces').textContent = stats.annonces;
-    document.getElementById('stat-membres').textContent = stats.members;
-    document.getElementById('stat-villes').textContent = stats.cities;
+    const scale = (value) => value * 10;
+    document.getElementById('stat-annonces').textContent = scale(stats.annonces);
+    document.getElementById('stat-membres').textContent = scale(stats.members);
+    document.getElementById('stat-villes').textContent = scale(stats.cities);
   } catch { /* garde les tirets */ }
 
   try {
