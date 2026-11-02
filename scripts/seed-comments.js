@@ -3,14 +3,21 @@ process.env.SEED_DEMO = 'false';
 process.env.ADMIN_EMAIL = '';
 process.env.ADMIN_PASSWORD = '';
 
+const fs = require('fs');
+const path = require('path');
 const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 const config = require('../server/config');
 const db = require('../server/db');
 
 const EXECUTE = process.argv.includes('--execute');
 const CLEANUP = process.argv.includes('--cleanup');
+const RESET = process.argv.includes('--reset');
 const COMMENT_PREFIX = 'seedc-';
 const REPLY_PREFIX = 'seedr-';
+const COMMENTERS_PREFIX = 'seedm-';
+const OUTPUT_DIR = path.join(__dirname, '..', 'seed-output');
+const COMMENTERS_CSV = path.join(OUTPUT_DIR, 'seed-commenters.csv');
 
 const CITY_LANG = {
   Paris: 'fr',
@@ -35,6 +42,15 @@ const CITY_LANG = {
   Montréal: 'fr',
   Houston: 'en',
 };
+
+const COMMENTERS = [
+  'Marc', 'Julien', 'Thomas', 'Lucas', 'Antoine', 'Karim', 'Samir', 'Youssef',
+  'Mehdi', 'David', 'Daniel', 'Kevin', 'Bryan', 'Alexandre', 'Maxime', 'Hugo',
+  'Nathan', 'Enzo', 'Gabriel', 'Raphaël', 'Louis', 'Adam', 'Arthur', 'Jules',
+  'Ethan', 'Noah', 'Liam', 'Mateo', 'Diego', 'Carlos', 'Javier', 'Miguel',
+  'Pablo', 'Sergio', 'Andrés', 'Marco', 'Luca', 'Matteo', 'Alessandro', 'Lorenzo',
+  'Stefano', 'Giovanni', 'Paolo', 'Ahmed', 'Omar', 'Yassine', 'Bilal', 'Rachid',
+];
 
 const COMMENT_TEXTS = [
   // français
@@ -120,6 +136,36 @@ function pick(list, seed) {
   return list[seed % list.length];
 }
 
+function slugify(value) {
+  return String(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function csvEscape(value) {
+  const str = String(value ?? '');
+  return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+}
+
+function buildCommenterProfiles() {
+  return COMMENTERS.map((name, index) => {
+    const slug = `${slugify(name)}-${String(index + 1).padStart(2, '0')}`;
+    const id = `${COMMENTERS_PREFIX}${slug}`;
+    return {
+      id,
+      email: `${slug}@seed.tonu.local`,
+      pseudo: `${name}_${10 + (hash32(id) % 90)}`,
+      age: 22 + (hash32(`${id}:age`) % 23),
+      createdAt: new Date(
+        Date.now() - (10 + (hash32(`${id}:date`) % 180)) * 24 * 60 * 60 * 1000
+      ).toISOString(),
+    };
+  });
+}
+
 function buildThread(ad, commenters, now) {
   const slug = ad.id.slice('seed-'.length);
   const count = commentCount(ad.id);
@@ -158,35 +204,86 @@ function buildThread(ad, commenters, now) {
   return { rows, count, lang };
 }
 
-async function loadData() {
-  const ads = await db.all(
+async function ensureCommenters() {
+  const profiles = buildCommenterProfiles();
+  const existing = new Set(
+    (await db.all(`SELECT id FROM users WHERE id LIKE '${COMMENTERS_PREFIX}%'`)).map((row) => row.id)
+  );
+  const pending = profiles.filter((profile) => !existing.has(profile.id));
+  if (!pending.length) {
+    console.log(`Comptes commentateurs : ${profiles.length} déjà présents.`);
+    return profiles;
+  }
+
+  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+  if (!fs.existsSync(COMMENTERS_CSV)) {
+    fs.writeFileSync(COMMENTERS_CSV, 'pseudo,email,password\n');
+  }
+
+  for (const profile of pending) {
+    const conflict = await db.get(
+      'SELECT id FROM users WHERE LOWER(email) = ? OR LOWER(pseudo) = ?',
+      [profile.email.toLowerCase(), profile.pseudo.toLowerCase()]
+    );
+    if (conflict) {
+      throw new Error(`Conflit pour le commentateur ${profile.pseudo} : ${conflict.id} existe déjà.`);
+    }
+    const password = crypto.randomBytes(12).toString('base64url');
+    await db.run(
+      `INSERT INTO users (id, email, password_hash, pseudo, age, role, banned, terms_accepted_at, terms_version, created_at)
+       VALUES (?, ?, ?, ?, ?, 'user', false, now(), ?, ?)`,
+      [profile.id, profile.email, bcrypt.hashSync(password, 12), profile.pseudo, profile.age, config.termsVersion, profile.createdAt]
+    );
+    fs.appendFileSync(
+      COMMENTERS_CSV,
+      `${csvEscape(profile.pseudo)},${csvEscape(profile.email)},${csvEscape(password)}\n`
+    );
+  }
+  console.log(`Comptes commentateurs : ${pending.length} créés, ${profiles.length - pending.length} déjà présents.`);
+  return profiles;
+}
+
+async function loadAds() {
+  return db.all(
     `SELECT a.id, a.user_id, a.city, a.created_at
      FROM annonces a
      WHERE a.id LIKE 'seed-%' AND a.status = 'approved'
      ORDER BY a.created_at ASC, a.id ASC`
   );
-  const commenters = await db.all(
-    "SELECT id FROM users WHERE id LIKE 'seed-%' AND banned = false ORDER BY id"
-  );
-  const existing = await db.get(
-    "SELECT COUNT(*) AS n FROM comments WHERE id LIKE 'seedc-%' OR id LIKE 'seedr-%'"
-  );
-  return { ads, commenters, existing: Number(existing?.n || 0) };
+}
+
+async function resetComments() {
+  const replies = await db.run("DELETE FROM comments WHERE id LIKE 'seedr-%'");
+  const comments = await db.run("DELETE FROM comments WHERE id LIKE 'seedc-%'");
+  console.log(`Anciens commentaires supprimés : ${comments.changes} commentaires, ${replies.changes} réponses.`);
 }
 
 async function cleanup() {
   await db.init();
   const replies = await db.run("DELETE FROM comments WHERE id LIKE 'seedr-%'");
   const comments = await db.run("DELETE FROM comments WHERE id LIKE 'seedc-%'");
-  console.log(`Suppression terminée : ${comments.changes} commentaires, ${replies.changes} réponses.`);
+  const users = await db.run(`DELETE FROM users WHERE id LIKE '${COMMENTERS_PREFIX}%'`);
+  console.log(
+    `Suppression terminée : ${comments.changes} commentaires, ${replies.changes} réponses, ${users.changes} comptes commentateurs.`
+  );
   await db.close();
 }
 
-async function seed({ ads, commenters }) {
+async function seed({ reset }) {
   await db.init();
+  if (reset) await resetComments();
+  await ensureCommenters();
+
+  const ads = await loadAds();
+  const commenters = await db.all(
+    `SELECT id FROM users WHERE id LIKE '${COMMENTERS_PREFIX}%' AND banned = false ORDER BY id`
+  );
+  if (!ads.length) throw new Error('Aucune annonce seed approuvée trouvée.');
+  if (commenters.length < 2) throw new Error('Pas assez de comptes commentateurs.');
+
   const now = Date.now();
   let created = 0;
-  let updated = 0;
+  let skipped = 0;
 
   for (const ad of ads) {
     const { rows } = buildThread(ad, commenters, now);
@@ -199,12 +296,13 @@ async function seed({ ads, commenters }) {
       params
     );
     created += result.changes;
-    updated += rows.length - result.changes;
+    skipped += rows.length - result.changes;
   }
 
   console.log(
-    `Terminé : ${created} commentaires/réponses créés, ${updated} déjà présents, ${ads.length} annonces traitées.`
+    `Terminé : ${created} commentaires/réponses créés, ${skipped} déjà présents, ${ads.length} annonces traitées.`
   );
+  console.log(`Identifiants des commentateurs : ${COMMENTERS_CSV}`);
   await db.close();
 }
 
@@ -213,7 +311,7 @@ async function seed({ ads, commenters }) {
 
   if (CLEANUP) {
     if (!EXECUTE) {
-      console.log('Mode simulation : ajoute --execute pour supprimer les commentaires seed.');
+      console.log('Mode simulation : ajoute --execute pour supprimer commentaires et comptes commentateurs.');
       return;
     }
     await cleanup();
@@ -221,39 +319,49 @@ async function seed({ ads, commenters }) {
   }
 
   await db.init();
-  const data = await loadData();
-
-  if (!data.ads.length) throw new Error('Aucune annonce seed approuvée trouvée.');
-  if (data.commenters.length < 2) throw new Error('Pas assez de comptes seed pour commenter.');
+  const ads = await loadAds();
+  const existingCommenters = Number(
+    (await db.get(`SELECT COUNT(*) AS n FROM users WHERE id LIKE '${COMMENTERS_PREFIX}%'`)).n
+  );
+  const existingComments = Number(
+    (await db.get("SELECT COUNT(*) AS n FROM comments WHERE id LIKE 'seedc-%'")).n
+  );
   await db.close();
 
-  const totalThreads = data.ads.reduce((sum, ad) => sum + commentCount(ad.id), 0);
+  if (!ads.length) throw new Error('Aucune annonce seed approuvée trouvée.');
+
+  const totalThreads = ads.reduce((sum, ad) => sum + commentCount(ad.id), 0);
   console.log('Plan de commentaires :');
   console.log(
     JSON.stringify(
       {
-        annonces: data.ads.length,
+        annonces: ads.length,
         commentaires: totalThreads,
         reponses: totalThreads,
         lignesTotal: totalThreads * 2,
-        dejaEnBase: data.existing,
-        commentateurs: data.commenters.length,
+        comptesCommentateurs: COMMENTERS.length,
+        commentateursEnBase: existingCommenters,
+        commentairesDejaEnBase: existingComments,
       },
       null,
       2
     )
   );
-  for (const ad of data.ads.slice(0, 3)) {
-    const thread = buildThread(ad, data.commenters, Date.now());
+
+  const previewCommenters = COMMENTERS.slice(0, 3).map((name, index) => ({ id: `${COMMENTERS_PREFIX}preview-${index}` }));
+  for (const ad of ads.slice(0, 3)) {
+    const thread = buildThread(ad, previewCommenters, Date.now());
     console.log(`- ${ad.id} (${ad.city}, ${thread.lang}) : ${thread.count} commentaires + réponses`);
     console.log(`  « ${thread.rows[0].content} » → « ${thread.rows[1].content} »`);
   }
 
   if (!EXECUTE) {
     console.log('Mode simulation : aucune écriture. Ajoute --execute pour créer les commentaires.');
+    if (existingComments) console.log('Des commentaires seed existent déjà : ajoute --reset pour les remplacer.');
     return;
   }
-  await seed(data);
+
+  await seed({ reset: RESET });
 })().catch((err) => {
   console.error(`Erreur : ${err.message}`);
   process.exitCode = 1;
